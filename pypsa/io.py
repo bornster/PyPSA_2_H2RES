@@ -191,6 +191,37 @@ class ImporterCSV(Importer):
                 yield attr, df
 
 
+class ExporterXML(Exporter):
+    def remove_static(self, list_name: str) -> None:
+        print("remove_static")
+
+    def remove_series(self, list_name: str, attr: str) -> None:
+        print("remove_series")
+
+    def save_attributes(self, attrs: dict) -> None:
+        print("save_attributes")
+
+    def save_meta(self, meta: dict) -> None:
+        print("save_meta")
+
+    def save_crs(self, crs: dict) -> None:
+        print("save_crs")
+
+    def save_snapshots(self, snapshots: Sequence) -> None:
+        print("save_snapshots")
+
+    def save_investment_periods(self, investment_periods: pd.Index) -> None:
+        print("save_investment_periods")
+
+    def save_static(self, list_name: str, df: pd.DataFrame) -> None:
+        print("save_static")
+
+    def save_series(self, list_name: str, attr: str, df: pd.DataFrame) -> None:
+        print("save_series")
+
+
+
+
 class ExporterCSV(Exporter):
     def __init__(self, csv_folder_name: Path | str, encoding: str | None) -> None:
         self.csv_folder_name = Path(csv_folder_name)
@@ -646,6 +677,12 @@ def import_from_csv_folder(
     with ImporterCSV(csv_folder_name, encoding=encoding) as importer:
         _import_from_importer(n, importer, basename=basename, skip_time=skip_time)
 
+def export_to_xml_folder(self) -> None:
+    # n: Network,
+    # csv_folder_name: str,
+    # encoding: str | None = None,
+    # export_standard_types: bool = False, -> None:
+    print("export_to_xml")
 
 @deprecated_common_kwargs
 def export_to_csv_folder(
