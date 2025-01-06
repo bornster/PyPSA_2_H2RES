@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='utf-8'?>
+<data>
+  <row>
+    <name>London</name>
+    <bus>London</bus>
+  </row>
+  <row>
+    <name>Frankfurt</name>
+    <bus>Frankfurt</bus>
+  </row>
+  <row>
+    <name>Norway</name>
+    <bus>Norway</bus>
+  </row>
+  <row>
+    <name>Norwich</name>
+    <bus>Norwich</bus>
+  </row>
+  <row>
+    <name>Bremen</name>
+    <bus>Bremen</bus>
+  </row>
+  <row>
+    <name>Manchester</name>
+    <bus>Manchester</bus>
+  </row>
+</data>

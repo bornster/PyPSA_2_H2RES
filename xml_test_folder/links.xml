@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8'?>
+<data>
+  <row>
+    <name>Norwich Converter</name>
+    <bus0>Norwich</bus0>
+    <bus1>Norwich DC</bus1>
+    <p_nom>1000.0</p_nom>
+    <p_nom_extendable>True</p_nom_extendable>
+    <p_min_pu>-0.9</p_min_pu>
+    <p_max_pu>0.9</p_max_pu>
+    <capital_cost>0.21</capital_cost>
+  </row>
+  <row>
+    <name>Norway Converter</name>
+    <bus0>Norway</bus0>
+    <bus1>Norway DC</bus1>
+    <p_nom>1000.0</p_nom>
+    <p_nom_extendable>True</p_nom_extendable>
+    <p_min_pu>-0.9</p_min_pu>
+    <p_max_pu>0.9</p_max_pu>
+    <capital_cost>0.2</capital_cost>
+  </row>
+  <row>
+    <name>Bremen Converter</name>
+    <bus0>Bremen</bus0>
+    <bus1>Bremen DC</bus1>
+    <p_nom>1000.0</p_nom>
+    <p_nom_extendable>True</p_nom_extendable>
+    <p_min_pu>-0.9</p_min_pu>
+    <p_max_pu>0.9</p_max_pu>
+    <capital_cost>0.19</capital_cost>
+  </row>
+  <row>
+    <name>DC link</name>
+    <bus0>London</bus0>
+    <bus1>Bremen</bus1>
+    <p_nom>1000.0</p_nom>
+    <p_nom_extendable>True</p_nom_extendable>
+    <p_min_pu>-0.9</p_min_pu>
+    <p_max_pu>0.9</p_max_pu>
+    <capital_cost>0.8765342</capital_cost>
+  </row>
+</data>
