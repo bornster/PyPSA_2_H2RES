@@ -2,14 +2,60 @@
 Release Notes
 #######################
 
-.. Upcoming Release
-.. ================
+Upcoming Release
+================
 
-.. .. warning:: 
+.. warning:: 
   
-..   The features listed below are not released yet, but will be part of the next release! 
-..   To use the features already you have to install the ``master`` branch, e.g. 
-..   ``pip install git+https://github.com/pypsa/pypsa``.
+  The features listed below are not released yet, but will be part of the next release! 
+  To use the features already you have to install the ``master`` branch, e.g. 
+  ``pip install git+https://github.com/pypsa/pypsa``.
+
+* PyPSA `0.33` provides support for the recent Python 3.13 release and drops support 
+  for Python 3.9. While Python 3.9 still gets security updates until October 2025,
+  core dependencies of PyPSA are dropping support for Python 3.9 (e.g. `numpy`) and
+  active support is only provided for the most recent versions 
+  (see `endoflife.date <https://endoflife.date/python>`_). It is recommended to upgrade to the 
+  latest Python version if possible. Note that there might be some issues with
+  Windows and Python 3.13, which are not yet resolved. 
+  (https://github.com/PyPSA/PyPSA/pull/1099)
+
+Features
+--------
+
+* New component class structure (https://github.com/PyPSA/PyPSA/pull/1075)
+
+  * Major structural refactoring of how component data is stored and accessed. The new 
+    structure adds an extra layer to move all component-specific data from the network 
+    class to a new component class.
+
+  * This is an experimental feature, will be developed further and is not yet 
+    recommended for general use. More features, documentation and examples will 
+    follow. Most users will not notice any changes. If you wanna play around with
+    it, you could do so for example via: ``c = n.components.generators``.
+  
+  * While the changes try to maintain full backwards compatibility, there may be some 
+    breaking changes or bugs, especially if you use custom components or custom 
+    component attributes in your network attributes in your network. 
+  
+  * Please report any issues and bugs you might encounter
+    via the `issue tracker <https://github.com/PyPSA/PyPSA/issues/new>`__ on 
+    GitHub.
+
+* New network attributes :meth:`n.timesteps <pypsa.networks.Network.timesteps>`, 
+  :meth:`n.periods <pypsa.networks.Network.periods>` and 
+  :meth:`n.has_periods <pypsa.networks.Network.has_periods>` to simplified level access
+  of the snapshots dimension. (https://github.com/PyPSA/PyPSA/pull/1113)
+
+* Consistency checks can now be run with the parameter ``strict``. If set to 
+  ``True``, the consistency check will raise an error if any of the checks fail.
+
+Bug fixes
+---------
+
+* The expression module now correctly includes the "Load" component in the
+  energy balance calculation. Before the fix, the "Load" component was not
+  considered. (https://github.com/PyPSA/PyPSA/pull/1110)
 
 `v0.32.0 <https://github.com/PyPSA/PyPSA/releases/tag/v0.32.0>`__ (5th December 2024)
 =======================================================================================
@@ -1763,7 +1809,7 @@ changes to the internal API.
   interface for components is gone. You can only access component
   attributes through the dataframes, e.g. ``network.lines``.
 * Component attributes are now defined in CSV files in
-  ``pypsa/component_attrs/``. You can access these CSVs in the code
+  ``pypsa/data/component_attrs/``. You can access these CSVs in the code
   via the dictionary ``network.components``,
   e.g. ``network.components["Line"]["attrs"]`` will show a pandas
   DataFrame with all attributes and their types, defaults, units and

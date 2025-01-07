@@ -213,7 +213,7 @@ def optimize_transmission_expansion_iteratively(
             / n.lines["s_nom_opt"].mean()
         )
         logger.info(
-            f"Mean square difference after iteration {iteration} is " f"{lines_err}"
+            f"Mean square difference after iteration {iteration} is " f"{lines_err}"  # type: ignore
         )
         return lines_err
 
@@ -394,7 +394,7 @@ def optimize_security_constrained(
 
     if branch_outages is None:
         branch_outages = all_passive_branches
-    elif isinstance(branch_outages, (list, pd.Index)):
+    elif isinstance(branch_outages, (list | pd.Index)):
         branch_outages = pd.MultiIndex.from_product([("Line",), branch_outages])
 
         if diff := set(branch_outages) - set(all_passive_branches):
@@ -536,7 +536,7 @@ def optimize_mga(
     weights : dict-like
         Weights for alternate objective function. The default is None, which
         minimizes generation capacity. The weights dictionary should be keyed
-        with the component and variable (see ``pypsa/variables.csv``), followed
+        with the component and variable (see ``pypsa/data/variables.csv``), followed
         by a float, dict, pd.Series or pd.DataFrame for the coefficients of the
         objective function. Examples:
 
@@ -599,7 +599,7 @@ def optimize_mga(
         fixed_cost = (n.statistics.installed_capex().sum() * w).sum()
 
     objective = m.objective
-    if not isinstance(objective, (LinearExpression, QuadraticExpression)):
+    if not isinstance(objective, (LinearExpression | QuadraticExpression)):
         objective = objective.expression
 
     m.add_constraints(
