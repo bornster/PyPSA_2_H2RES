@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<data>
-  <row>
-    <name>co2_limit</name>
-    <sense>&lt;=</sense>
-    <constant>1000.0</constant>
-  </row>
-</data>
