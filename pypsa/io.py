@@ -14,7 +14,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.request import urlretrieve
 
-from pypsa.utils import check_optional_dependency, deprecated_common_kwargs
+from pypsa.utils import check_optional_dependency, deprecated_common_kwargs, sanitize_columns
 
 try:
     from cloudpathlib import AnyPath as Path
@@ -671,10 +671,7 @@ def _export_to_exporter(
                     col_export = dynamic[attr].columns[(dynamic[attr] != default).any()]
                     
             if len(col_export) > 0:
-                if isinstance(exporter, ExporterXML):
-                    static.columns = [col.replace(" ", "_") for col in static.columns]
-                else:
-                    static = dynamic[attr].reset_index()[col_export]
+                static = sanitize_columns(dynamic[attr].reset_index()[col_export])
                 exporter.save_series(list_name, attr, static)
             else:
                 exporter.remove_series(list_name, attr)

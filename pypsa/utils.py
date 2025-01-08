@@ -307,3 +307,23 @@ def check_optional_dependency(module_name: str, install_message: str) -> None:
         __import__(module_name)
     except ImportError:
         raise ImportError(install_message)
+
+
+def sanitize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Sanitize column names of a DataFrame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame to sanitize.
+
+    Returns
+    -------
+    pd.DataFrame
+        Sanitized DataFrame.
+    """
+    cols = df.columns
+    cols = cols.map(lambda x: x.replace(" ", "_") if isinstance(x, str) else x)
+    df.columns = cols 
+    return df
