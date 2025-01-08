@@ -14,7 +14,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.request import urlretrieve
 
-from pypsa.utils import check_optional_dependency, deprecated_common_kwargs
+from pypsa.utils import check_optional_dependency, deprecated_common_kwargs, sanitize_columns
 
 try:
     from cloudpathlib import AnyPath as Path
@@ -189,6 +189,64 @@ class ImporterCSV(Importer):
                     parse_dates=True,
                 )
                 yield attr, df
+
+
+class ExporterXML(Exporter):
+    def __init__(self, xml_folder_name: str | Path, encoding: str | None) -> None:
+        self.xml_folder_name = Path(xml_folder_name)
+        self.encoding = encoding
+        
+        if not self.xml_folder_name.is_dir():
+            logger.warning(f"Directory {xml_folder_name} does not exist, creating it")
+            self.xml_folder_name.mkdir()
+    
+    def save_attributes(self, attrs: dict) -> None:
+        name = attrs.pop("name")
+        df = pd.DataFrame(attrs, index=pd.Index([name], name="name"))
+        fn = self.xml_folder_name.joinpath("network.xml")
+        with fn.open("w"):
+            df.to_xml(fn, index=False)
+            
+    def save_meta(self, meta: dict) -> None:
+        fn = self.xml_folder_name.joinpath("meta.json")
+        fn.open("w").write(json.dumps(meta))
+
+    def save_crs(self, crs: dict) -> None:
+        fn = self.xml_folder_name.joinpath("crs.json")
+        fn.open("w").write(json.dumps(crs))
+
+    def save_snapshots(self, snapshots: pd.Index) -> None:
+        fn = self.xml_folder_name.joinpath("snapshots.xml")
+        with fn.open("w"):
+            snapshots.to_xml(fn, index=False)
+
+    def save_investment_periods(self, investment_periods: pd.Index) -> None:
+        fn = self.xml_folder_name.joinpath("investment_periods.xml")
+        with fn.open("w"):
+            investment_periods.to_xml(fn, index=False)
+
+    def save_static(self, list_name: str, df: pd.DataFrame) -> None:
+        fn = self.xml_folder_name.joinpath(list_name + ".xml")
+        with fn.open("w"):
+            df.to_xml(fn, index=False)
+
+    def save_series(self, list_name: str, attr: str, df: pd.DataFrame) -> None:
+        fn = self.xml_folder_name.joinpath(list_name + "-" + attr + ".xml")
+        with fn.open("w"):
+            df.to_xml(fn, index=False)
+
+    def remove_static(self, list_name: str) -> None:
+        if fns := list(self.xml_folder_name.joinpath(list_name).glob("*.xml")):
+            for fn in fns:
+                fn.unlink()
+            logger.warning(f'Stale xml file(s) {", ".join(fns)} removed')
+
+    def remove_series(self, list_name: str, attr: str) -> None:
+        fn = self.xml_folder_name.joinpath(list_name + "-" + attr + ".xml")
+        if fn.exists():
+            fn.unlink()
+
+
 
 
 class ExporterCSV(Exporter):
@@ -519,7 +577,7 @@ def _export_to_exporter(
     # exportable component types
     allowed_types = (float, int, bool, str) + tuple(np.sctypeDict.values())
 
-    # first export network properties
+    # first export network properties 
     _attrs = {
         attr: getattr(n, attr)
         for attr in dir(n)
@@ -545,6 +603,7 @@ def _export_to_exporter(
     exporter.save_meta(n.meta)
 
     # now export snapshots
+    
     if isinstance(n.snapshot_weightings.index, pd.MultiIndex):
         n.snapshot_weightings.index.rename(["period", "timestep"], inplace=True)
     else:
@@ -570,7 +629,7 @@ def _export_to_exporter(
         if not export_standard_types and component in n.standard_type_components:
             static = static.drop(n.components[component]["standard_types"].index)
 
-        # first do static attributes
+        #first do static attributes
         static = static.rename_axis(index="name")
         if static.empty:
             exporter.remove_static(list_name)
@@ -598,22 +657,21 @@ def _export_to_exporter(
 
         exporter.save_static(list_name, static[col_export])
 
-        # now do varying attributes
+        #now do varying attributes
         for attr in dynamic:
             if attr not in attrs.index:
                 col_export = dynamic[attr].columns
             else:
                 default = attrs.at[attr, "default"]
-
                 if pd.isnull(default):
                     col_export = dynamic[attr].columns[
                         (~pd.isnull(dynamic[attr])).any()
                     ]
                 else:
                     col_export = dynamic[attr].columns[(dynamic[attr] != default).any()]
-
+                    
             if len(col_export) > 0:
-                static = dynamic[attr].reset_index()[col_export]
+                static = sanitize_columns(dynamic[attr].reset_index()[col_export])
                 exporter.save_series(list_name, attr, static)
             else:
                 exporter.remove_series(list_name, attr)
@@ -656,6 +714,20 @@ def import_from_csv_folder(
     with ImporterCSV(csv_folder_name, encoding=encoding) as importer:
         _import_from_importer(n, importer, basename=basename, skip_time=skip_time)
 
+def export_to_xml_folder(
+    n: Network,
+    xml_folder_name: str,
+    encoding: str | None = None,
+    export_standard_types: bool = False,
+    ) -> None:
+    basename = os.path.basename(xml_folder_name)
+    with ExporterXML(xml_folder_name=xml_folder_name, encoding=encoding) as exporter:
+        _export_to_exporter(
+            n,  
+            exporter,
+            basename=basename,
+            export_standard_types=export_standard_types,
+        )    
 
 @deprecated_common_kwargs
 def export_to_csv_folder(
