@@ -232,8 +232,9 @@ class ExporterXML(Exporter):
 
     def save_series(self, list_name: str, attr: str, df: pd.DataFrame) -> None:
         fn = self.xml_folder_name.joinpath(list_name + "-" + attr + ".xml")
+        sanitized_df = sanitize_columns(df)    
         with fn.open("w"):
-            df.to_xml(fn, index=False)
+            sanitized_df.to_xml(fn, index=False)
 
     def remove_static(self, list_name: str) -> None:
         if fns := list(self.xml_folder_name.joinpath(list_name).glob("*.xml")):
@@ -671,8 +672,8 @@ def _export_to_exporter(
                     col_export = dynamic[attr].columns[(dynamic[attr] != default).any()]
                     
             if len(col_export) > 0:
-                static = sanitize_columns(dynamic[attr].reset_index()[col_export])
-                exporter.save_series(list_name, attr, static)
+                static = dynamic[attr].reset_index()[col_export]
+                exporter.save_series(list_name, attr, static) 
             else:
                 exporter.remove_series(list_name, attr)
 

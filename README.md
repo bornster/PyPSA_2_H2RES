@@ -111,17 +111,12 @@ python -m venv venv
 
 On Linux/macOS
 ```
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 On Windows
 ```
 .\venv\Scripts\activate
-```
-
-Install dependencies necessary to run PyPSA
-```
-pip install -r requirements.txt
 ```
 
 Install PyPSA in editable mode
