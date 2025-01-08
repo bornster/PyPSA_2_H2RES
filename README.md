@@ -94,6 +94,45 @@ conda/mamba:
 
 Additionally, install a solver (see [here](https://pypsa.readthedocs.io/en/latest/getting-started/installation.html#getting-a-solver)).
 
+## Installation instructions for running PyPsa locally
+
+Clone the github repository and change the directory using terminal commands
+
+```
+git clone https://github.com/bornster/PyPSA.git
+cd PyPSA
+```
+
+Set up virtual environment 
+```
+python -m venv venv
+```
+
+On Linux/macOS
+```
+source venv/bin/activate
+```
+
+On Windows
+```
+.\venv\Scripts\activate
+```
+
+Install dependencies necessary to run PyPSA
+```
+pip install -r requirements.txt
+```
+
+Install PyPSA in editable mode
+```
+pip install -e .
+```
+
+After making changes to the main.py run the program in the terminal
+```
+python main.py
+```
+
 ## Usage
 
 ```py
