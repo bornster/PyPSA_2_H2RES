@@ -205,7 +205,7 @@ class ExporterXML(Exporter):
         df = pd.DataFrame(attrs, index=pd.Index([name], name="name"))
         fn = self.xml_folder_name.joinpath("network.xml")
         with fn.open("w"):
-            df.to_xml(fn)
+            df.to_xml(fn, index=False)
             
     def save_meta(self, meta: dict) -> None:
         fn = self.xml_folder_name.joinpath("meta.json")
@@ -228,12 +228,12 @@ class ExporterXML(Exporter):
     def save_static(self, list_name: str, df: pd.DataFrame) -> None:
         fn = self.xml_folder_name.joinpath(list_name + ".xml")
         with fn.open("w"):
-            df.to_xml(fn)
+            df.to_xml(fn, index=False)
 
     def save_series(self, list_name: str, attr: str, df: pd.DataFrame) -> None:
         fn = self.xml_folder_name.joinpath(list_name + "-" + attr + ".xml")
         with fn.open("w"):
-            print(df.to_xml(fn))
+            df.to_xml(fn, index=False)
 
     def remove_static(self, list_name: str) -> None:
         if fns := list(self.xml_folder_name.joinpath(list_name).glob("*.xml")):
