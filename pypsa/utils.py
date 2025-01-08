@@ -5,6 +5,7 @@ General utility functions for PyPSA.
 from __future__ import annotations
 
 import functools
+import numbers
 import warnings
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any
@@ -12,8 +13,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 from deprecation import deprecated
-from pandas.api.types import is_list_like
-
+from pandas.api.types import is_list_like,is_numeric_dtype
 from pypsa.definitions.structures import Dict
 
 if TYPE_CHECKING:
@@ -323,7 +323,10 @@ def sanitize_columns(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Sanitized DataFrame.
     """
-    cols = df.columns
-    cols = cols.map(lambda x: x.replace(" ", "_") if isinstance(x, str) else x)
-    df.columns = cols 
+
+    df.columns = df.columns.str.strip().str.replace(' ', '_')
+    for col_name, col_type in df.dtypes.items():
+        if is_numeric_dtype(col_type):
+            if col_name[0].isdigit():
+                df.rename(columns={col_name: f'_{col_name}'}, inplace=True)
     return df
