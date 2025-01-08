@@ -97,6 +97,7 @@ Additionally, install a solver (see [here](https://pypsa.readthedocs.io/en/lates
 ## Installation instructions for running PyPsa locally
 
 Clone the github repository and change the directory using terminal commands
+(Note. You may need to install [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) and [python](https://www.python.org/downloads/))
 
 ```
 git clone https://github.com/bornster/PyPSA.git

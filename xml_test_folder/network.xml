@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<data>
+  <row>
+    <_multi_invest>0</_multi_invest>
+    <now>now</now>
+    <pypsa_version>0.32.0</pypsa_version>
+    <srid>4326</srid>
+  </row>
+</data>
