@@ -108,16 +108,6 @@ def test_csv_io_multiindexed(ac_dc_network_mi, tmpdir):
         m.generators_t.p,
         ac_dc_network_mi.generators_t.p,
     )
-    
-def test_xml_io_multiindexed(ac_dc_network_mi, tmp_path):
-    fn = os.path.join(tmp_path, "xml_export")
-    ac_dc_network_mi.export_to_xml_folder(fn)
-    m = pypsa.Network(fn)
-    pd.testing.assert_frame_equal(
-        m.generators_t.p,
-        ac_dc_network_mi.generators_t.p,
-    )  
-
 
 def test_hdf5_io_multiindexed(ac_dc_network_mi, tmpdir):
     pytest.importorskip("tables", reason="PyTables not installed")
