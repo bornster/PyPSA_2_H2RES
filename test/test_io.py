@@ -34,7 +34,6 @@ def test_netcdf_io_datetime(tmpdir):
 
     assert (imported_sns == exported_sns).all()
 
-
 @pytest.mark.parametrize("meta", [{"test": "test"}, {"test": {"test": "test"}}])
 def test_csv_io(scipy_network, tmpdir, meta):
     fn = os.path.join(tmpdir, "csv_export")
@@ -48,6 +47,21 @@ def test_csv_io(scipy_network, tmpdir, meta):
 def test_csv_io_Path(scipy_network, tmpdir):
     fn = Path(os.path.join(tmpdir, "csv_export"))
     scipy_network.export_to_csv_folder(fn)
+    pypsa.Network(fn)
+    
+    
+@pytest.mark.parametrize("meta", [{"test": "test"}, {"test": {"test": "test"}}])
+def test_xml_io(scipy_network, tmp_path, meta):
+    fn = os.path.join(tmp_path, "xml_export")
+    scipy_network.meta = meta
+    scipy_network.export_to_xml_folder(fn)
+    pypsa.Network(fn)
+    reloaded = pypsa.Network(fn)
+    assert reloaded.meta == scipy_network.meta
+    
+def test_xml_io_Path(scipy_network, tmp_path):
+    fn = Path(os.path.join(tmp_path, "xml_export"))
+    scipy_network.export_to_xml_folder(fn)
     pypsa.Network(fn)
 
 
@@ -89,10 +103,20 @@ def test_csv_io_multiindexed(ac_dc_network_mi, tmpdir):
     fn = os.path.join(tmpdir, "csv_export")
     ac_dc_network_mi.export_to_csv_folder(fn)
     m = pypsa.Network(fn)
+
     pd.testing.assert_frame_equal(
         m.generators_t.p,
         ac_dc_network_mi.generators_t.p,
     )
+    
+def test_xml_io_multiindexed(ac_dc_network_mi, tmp_path):
+    fn = os.path.join(tmp_path, "xml_export")
+    ac_dc_network_mi.export_to_xml_folder(fn)
+    m = pypsa.Network(fn)
+    pd.testing.assert_frame_equal(
+        m.generators_t.p,
+        ac_dc_network_mi.generators_t.p,
+    )  
 
 
 def test_hdf5_io_multiindexed(ac_dc_network_mi, tmpdir):
