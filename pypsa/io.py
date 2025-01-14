@@ -14,6 +14,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.request import urlretrieve
 
+
 from pypsa.utils import check_optional_dependency, deprecated_common_kwargs, sanitize_columns
 
 try:
@@ -28,7 +29,7 @@ import validators
 import xarray as xr
 from deprecation import deprecated
 from pyproj import CRS
-
+import xml.etree.ElementTree as ET
 from pypsa.descriptors import update_linkports_component_attrs
 
 if TYPE_CHECKING:
@@ -710,18 +711,10 @@ def import_from_csv_folder(
     basename = Path(csv_folder_name).name
     with ImporterCSV(csv_folder_name, encoding=encoding) as importer:
         _import_from_importer(n, importer, basename=basename, skip_time=skip_time)
-        
-
-def export_as_H2RES(
-    n: Network,
-    xml_folder_name: str | Path,
-) -> None:
-    basename = os.path.basename(xml_folder_name)
 
 def export_to_xml_folder(
     n: Network,
     xml_folder_name: str | Path,
-    encoding: str | None = None,
     export_standard_types: bool = False,
     ) -> None:
     basename = os.path.basename(xml_folder_name)
@@ -1837,3 +1830,30 @@ def import_from_pandapower_net(
     for component in n.iterate_components({"Line", "Transformer"}):
         component.static.replace({"bus0": to_replace}, inplace=True)
         component.static.replace({"bus1": to_replace}, inplace=True)
+
+
+
+def export_to_h2res(
+    n: Network,
+    xml_folder_name: str | Path,
+    ) -> None:
+    path = Path(xml_folder_name)
+    fn = path.joinpath('genco_data_HR_sdewes.xml')
+    if not Path(xml_folder_name).is_dir():
+            logger.warning(f"Directory {xml_folder_name} does not exist, creating it")
+            Path(xml_folder_name).mkdir()
+    
+    root = ET.Element('data')
+    ET.indent(root, space="\t", level=0)
+    for index, row_data in n.generators.iterrows():
+        row = ET.Element('row')
+        ET.SubElement(row, 'unit_name').text = index
+        ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
+        # ET.SubElement(row, 'fuel_type').text = row_data['carrier']
+        # ET.SubElement(row, 'decom_start_existing_cap').text = 15
+        # ET.SubElement(row, 'lifetime').text = row_data['lifetime']
+        root.append(row)
+
+    tree = ET.ElementTree(root)
+    ET.indent(tree, space="\t", level=0)
+    tree.write(fn, encoding="utf-8")

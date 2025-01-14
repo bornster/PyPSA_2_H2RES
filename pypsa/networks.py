@@ -72,7 +72,6 @@ from pypsa.io import (
     _import_series_from_df,
     export_to_csv_folder,
     export_to_xml_folder,
-    export_as_H2RES,
     export_to_hdf5,
     export_to_netcdf,
     import_components_from_dataframe,
@@ -83,6 +82,7 @@ from pypsa.io import (
     import_from_pypower_ppc,
     import_series_from_dataframe,
     merge,
+    export_to_h2res,
 )
 from pypsa.optimization.optimize import OptimizationAccessor
 from pypsa.pf import (
@@ -102,8 +102,6 @@ from pypsa.plot import explore, iplot, plot  # type: ignore
 from pypsa.statistics import StatisticsAccessor
 from pypsa.typing import is_1d_list_like
 from pypsa.utils import as_index, deprecated_common_kwargs
-from lxml import etree
-
 
 if TYPE_CHECKING:
     import linopy
@@ -233,7 +231,7 @@ class Network:
     import_from_csv_folder = import_from_csv_folder
     export_to_csv_folder = export_to_csv_folder
     export_to_xml_folder = export_to_xml_folder
-    export_as_H2RES = export_as_H2RES
+    export_to_h2res = export_to_h2res
     import_from_hdf5 = import_from_hdf5
     export_to_hdf5 = export_to_hdf5
     import_from_netcdf = import_from_netcdf
