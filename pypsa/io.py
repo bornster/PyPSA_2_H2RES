@@ -191,10 +191,9 @@ class ImporterCSV(Importer):
                 yield attr, df
 
 
-class ExporterXML(Exporter):
-    def __init__(self, xml_folder_name: str | Path, encoding: str | None) -> None:
+class  ExporterXML(Exporter):
+    def __init__(self, xml_folder_name: str | Path) -> None:
         self.xml_folder_name = Path(xml_folder_name)
-        self.encoding = encoding
         
         if not self.xml_folder_name.is_dir():
             logger.warning(f"Directory {xml_folder_name} does not exist, creating it")
@@ -246,9 +245,6 @@ class ExporterXML(Exporter):
         fn = self.xml_folder_name.joinpath(list_name + "-" + attr + ".xml")
         if fn.exists():
             fn.unlink()
-
-
-
 
 class ExporterCSV(Exporter):
     def __init__(self, csv_folder_name: Path | str, encoding: str | None) -> None:
@@ -714,15 +710,22 @@ def import_from_csv_folder(
     basename = Path(csv_folder_name).name
     with ImporterCSV(csv_folder_name, encoding=encoding) as importer:
         _import_from_importer(n, importer, basename=basename, skip_time=skip_time)
+        
+
+def export_as_H2RES(
+    n: Network,
+    xml_folder_name: str | Path,
+) -> None:
+    basename = os.path.basename(xml_folder_name)
 
 def export_to_xml_folder(
     n: Network,
-    xml_folder_name: str,
+    xml_folder_name: str | Path,
     encoding: str | None = None,
     export_standard_types: bool = False,
     ) -> None:
     basename = os.path.basename(xml_folder_name)
-    with ExporterXML(xml_folder_name=xml_folder_name, encoding=encoding) as exporter:
+    with ExporterXML(xml_folder_name=xml_folder_name) as exporter:
         _export_to_exporter(
             n,  
             exporter,
