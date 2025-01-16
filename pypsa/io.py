@@ -1850,7 +1850,7 @@ def export_to_h2res(
         ET.SubElement(row, 'unit_name').text = str(index)
         ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
         ET.SubElement(row, 'fuel_type').text = str(row_data['carrier'])
-        ET.SubElement(row, 'decom_start_existing_cap').text = str(15)
+        ET.SubElement(row, 'decom_start_existing_cap').text = str(row_data['lifetime'] - 10) if (row_data['lifetime'] > 10 and pd.notna(row_data["lifetime"])) else 0
         ET.SubElement(row, 'lifetime').text = str(row_data['lifetime'])
         ET.SubElement(row, 'decom_start_new').text = "TBD"
         ET.SubElement(row, 'final_life_cap').text = "TBD"
