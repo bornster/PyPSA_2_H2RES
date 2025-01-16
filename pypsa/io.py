@@ -1831,8 +1831,6 @@ def import_from_pandapower_net(
         component.static.replace({"bus0": to_replace}, inplace=True)
         component.static.replace({"bus1": to_replace}, inplace=True)
 
-
-
 def export_to_h2res(
     n: Network,
     xml_folder_name: str | Path,
@@ -1850,9 +1848,9 @@ def export_to_h2res(
         ET.SubElement(row, 'unit_name').text = str(index)
         ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
         ET.SubElement(row, 'fuel_type').text = str(row_data['carrier'])
-        ET.SubElement(row, 'decom_start_existing_cap').text = str(row_data['lifetime'] - 10) if (row_data['lifetime'] > 10 and pd.notna(row_data["lifetime"])) else 0
-        ET.SubElement(row, 'lifetime').text = str(row_data['lifetime'])
-        ET.SubElement(row, 'decom_start_new').text = "TBD"
+        ET.SubElement(row, 'decom_start_existing_cap').text = str(get_decomission_data('decom_start_existing_cap', row_data['lifetime']))
+        ET.SubElement(row, 'life_time').text = str(row_data['lifetime'])
+        ET.SubElement(row, 'decom_start_new').text = str(get_decomission_data('decom_start_new', row_data['lifetime']))
         ET.SubElement(row, 'final_life_cap').text = "TBD"
         ET.SubElement(row, 'max_inv_period').text = "TBD"
         ET.SubElement(row, 'cap_factor').text = "1"
@@ -1861,20 +1859,20 @@ def export_to_h2res(
         ET.SubElement(row, 'cap_inv_cost').text = str(row_data['capital_cost'])
         ET.SubElement(row, 'ramping_cost').text = "TBD"
         ET.SubElement(row, 'co2_intensity').text = "TBD"
-        ET.SubElement(row, 'technology').text = "TBD"
+        ET.SubElement(row, 'technology').text = str(row_data['technology'])
         ET.SubElement(row, 'ramp_up_rate').text = str(row_data['ramp_limit_up'])
         ET.SubElement(row, 'ramp_down_rate').text = str(row_data['ramp_limit_down'])
         ET.SubElement(row, 'primary_reserve').text = str(np.NaN)
         ET.SubElement(row, 'secondary_reserve').text = str(np.NaN)
         ET.SubElement(row, 'stab_factor').text = "1"
         ET.SubElement(row, 'chp_type').text = "TBD"
-        ET.SubElement(row, 'sto_capacity').text = str(float(get_storage_data(n.storage_units,row_data['bus'],'p_nom',0)) * float(get_storage_data(n.storage_units,row_data['bus'],'max_hours',1)))
-        ET.SubElement(row, 'sto_self_discharge').text = get_storage_data(n.storage_units,row_data['bus'],'inflow')
-        ET.SubElement(row, 'sto_max_charging_power').text = get_storage_data(n.storage_units,row_data['bus'],'p_store')
-        ET.SubElement(row, 'sto_charging_efficiency').text = get_storage_data(n.storage_units,row_data['bus'],'efficiency_store')
+        ET.SubElement(row, 'sto_capacity').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_nom',0) * get_storage_data(n.storage_units,row_data['bus'],'max_hours',1))
+        ET.SubElement(row, 'sto_self_discharge').text = str(get_storage_data(n.storage_units,row_data['bus'],'inflow'))
+        ET.SubElement(row, 'sto_max_charging_power').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_store'))
+        ET.SubElement(row, 'sto_charging_efficiency').text = str(get_storage_data(n.storage_units,row_data['bus'],'efficiency_store'))
         ET.SubElement(row, 'chp_power_to_heat').text = "TBD"
         ET.SubElement(row, 'chp_power_loss_factor').text = "TBD"
-        ET.SubElement(row, 'chp_max_heat').text =  get_storage_data(n.storage_units,row_data['bus'],'p_nom')
+        ET.SubElement(row, 'chp_max_heat').text =  str(get_storage_data(n.storage_units,row_data['bus'],'p_nom'))
         root.append(row)
 
     tree = ET.ElementTree(root)
@@ -1882,12 +1880,20 @@ def export_to_h2res(
     tree.write(fn, encoding="utf-8")
     
     
-def get_storage_data(df: pd.DataFrame, bus: str, col_name: str, default_value: float | str = np.NaN) -> str:
+def get_storage_data(df: pd.DataFrame, bus: str, col_name: str, default_value: float | str = np.NaN):
     if (col_name not in df.columns):
-        return str(default_value)
+        return default_value
     storage_data = df.loc[df['bus'] == bus, col_name]
     if (storage_data.empty):
         storage_data = default_value
     else:
         storage_data = storage_data.iloc[0]
-    return str(storage_data)
+    return storage_data
+
+def get_decomission_data(col_name: str, lifetime: float) -> float:
+    if (math.isinf(lifetime)):
+        return 0
+    if (col_name == 'decom_start_existing_cap'):
+        return lifetime - 10 if (lifetime > 10 and pd.notna(lifetime)) else 0
+    if (col_name == 'decom_start_new'):
+        return lifetime - 5 if (lifetime > 5 and pd.notna(lifetime)) else 0
