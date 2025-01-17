@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.request import urlretrieve
 
 
+from pypsa.constants import ENERGY_SOURCES
 from pypsa.utils import check_optional_dependency, deprecated_common_kwargs, sanitize_columns
 
 try:
@@ -1830,6 +1831,10 @@ def import_from_pandapower_net(
     for component in n.iterate_components({"Line", "Transformer"}):
         component.static.replace({"bus0": to_replace}, inplace=True)
         component.static.replace({"bus1": to_replace}, inplace=True)
+        
+        
+        
+        
 
 def export_to_h2res(
     n: Network,
@@ -1847,11 +1852,11 @@ def export_to_h2res(
         row = ET.Element('row')
         ET.SubElement(row, 'unit_name').text = str(index)
         ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
-        ET.SubElement(row, 'fuel_type').text = str(row_data['carrier'])
+        ET.SubElement(row, 'fuel_type').text = validate_fuel_type(row_data['carrier'])
         ET.SubElement(row, 'decom_start_existing_cap').text = str(get_decomission_data('decom_start_existing_cap', row_data['lifetime']))
         ET.SubElement(row, 'life_time').text = str(row_data['lifetime'])
         ET.SubElement(row, 'decom_start_new').text = str(get_decomission_data('decom_start_new', row_data['lifetime']))
-        ET.SubElement(row, 'final_life_cap').text = "TBD"
+        ET.SubElement(row, 'final_life_cap').text = str(get_final_life_cap(row_data['carrier']))
         ET.SubElement(row, 'max_inv_period').text = "TBD"
         ET.SubElement(row, 'cap_factor').text = "1"
         ET.SubElement(row, 'efficiency').text = str(row_data['efficiency'])
@@ -1859,7 +1864,7 @@ def export_to_h2res(
         ET.SubElement(row, 'cap_inv_cost').text = str(row_data['capital_cost'])
         ET.SubElement(row, 'ramping_cost').text = "TBD"
         ET.SubElement(row, 'co2_intensity').text = "TBD"
-        ET.SubElement(row, 'technology').text = str(row_data['technology'])
+        ET.SubElement(row, 'technology').text = validate_technology(row_data['carrier'], row_data['technology'])
         ET.SubElement(row, 'ramp_up_rate').text = str(row_data['ramp_limit_up'])
         ET.SubElement(row, 'ramp_down_rate').text = str(row_data['ramp_limit_down'])
         ET.SubElement(row, 'primary_reserve').text = str(np.NaN)
@@ -1870,6 +1875,7 @@ def export_to_h2res(
         ET.SubElement(row, 'sto_self_discharge').text = str(get_storage_data(n.storage_units,row_data['bus'],'inflow'))
         ET.SubElement(row, 'sto_max_charging_power').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_store'))
         ET.SubElement(row, 'sto_charging_efficiency').text = str(get_storage_data(n.storage_units,row_data['bus'],'efficiency_store'))
+
         ET.SubElement(row, 'chp_power_to_heat').text = "TBD"
         ET.SubElement(row, 'chp_power_loss_factor').text = "TBD"
         ET.SubElement(row, 'chp_max_heat').text =  str(get_storage_data(n.storage_units,row_data['bus'],'p_nom'))
@@ -1891,9 +1897,29 @@ def get_storage_data(df: pd.DataFrame, bus: str, col_name: str, default_value: f
     return storage_data
 
 def get_decomission_data(col_name: str, lifetime: float) -> float:
-    if (math.isinf(lifetime)):
+    if (math.isinf(lifetime) or math.isnan(lifetime)):
         return 0
     if (col_name == 'decom_start_existing_cap'):
-        return lifetime - 10 if (lifetime > 10 and pd.notna(lifetime)) else 0
+        return lifetime - 10 if (lifetime > 10) else 0
     if (col_name == 'decom_start_new'):
-        return lifetime - 5 if (lifetime > 5 and pd.notna(lifetime)) else 0
+        return lifetime - 5 if (lifetime > 5) else 0
+    
+def validate_fuel_type(carrier: str) -> str:
+    if not any(carrier.capitalize() in key for key in ENERGY_SOURCES.keys()):
+        raise ValueError(f'Carrier of type {carrier} is not supported in H2RES model')
+    return carrier.capitalize()
+
+def get_final_life_cap(carrier: str) -> float:
+    if (carrier.capitalize() == fuel_type for fuel_type in ENERGY_SOURCES.keys()):
+        return ENERGY_SOURCES[carrier.capitalize()]['final_life_cap']
+    else: 
+        raise ValueError(f'Carrier of type {carrier} is not supported in H2RES model')
+
+def validate_technology(carrier: str, technology: str):
+    if (carrier.capitalize() in ENERGY_SOURCES.keys()):
+        if (technology.upper() in ENERGY_SOURCES[carrier.capitalize()]['technology']):
+            return technology.upper()
+        
+        raise ValueError(f'Technology of type {technology} is not supported as a subtype of {carrier} in H2RES model. Allowed subtypes are {ENERGY_SOURCES[carrier.capitalize()]['technology']}')
+    
+    raise ValueError(f'Carrier of type {carrier} is not supported in H2RES model. Allowed types include {ENERGY_SOURCES.keys()}')
