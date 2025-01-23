@@ -1,12 +1,14 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 from geopandas.testing import assert_geodataframe_equal
 from numpy.testing import assert_array_almost_equal as equal
 
 import pypsa
+from pypsa.io import is_valid_life_time
 
 
 @pytest.mark.parametrize("meta", [{"test": "test"}, {"test": {"test": "test"}}])
@@ -319,3 +321,18 @@ def test_cloudpathlib_uri_schemes():
     assert isinstance(
         cloudpathlib.AnyPath("az://bucket/file"), cloudpathlib.AzureBlobPath
     )
+
+@pytest.mark.parametrize(
+    "life_time, expected",
+    [
+        ((np.NaN), 30),
+        (50,50),
+        (40.55,40.55),
+        (1000.00000,1000.00000),
+        (0,30),
+        (np.inf,30),
+        (-np.inf,30),
+    ]
+)
+def test_is_valid_life_time(life_time, expected):
+    assert is_valid_life_time(life_time) == expected

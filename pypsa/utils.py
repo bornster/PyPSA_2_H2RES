@@ -331,22 +331,3 @@ def sanitize_columns(df: pd.DataFrame) -> pd.DataFrame:
             if col_name[0].isdigit():
                 df.rename(columns={col_name: f'_{col_name}'}, inplace=True)
     return df
-
-def is_valid_life_time(life_time: float) -> bool: 
-    """
-    Check if the given life time is valid.
-
-    Parameters
-    ----------
-    life_time : float
-        The life time to check.
-
-    Returns
-    -------
-    bool
-        True if the life time is valid, False otherwise.
-    """
-    
-    if (math.isinf(life_time) or math.isnan(life_time) or life_time == 0):
-        return 30
-    return life_time
