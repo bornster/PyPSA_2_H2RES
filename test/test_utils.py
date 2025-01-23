@@ -1,3 +1,4 @@
+import math
 import warnings
 
 import numpy as np
@@ -10,6 +11,7 @@ from pypsa.utils import (
     deprecated_kwargs,
     equals,
     future_deprecation,
+    is_valid_life_time,
     list_as_string,
     rename_kwargs,
 )
@@ -69,6 +71,20 @@ def test_as_index(ac_dc_network_mi, attr, expected_name):
 def test_equals(a, b, expected):
     assert equals(a, b) == expected
 
+@pytest.mark.parametrize(
+    "life_time, expected",
+    [
+        ((np.NaN), 30),
+        (50,50),
+        (40.55,40.55),
+        (1000.00000,1000.00000),
+        (0,30),
+        (np.inf,30),
+        (-np.inf,30),
+    ]
+)
+def test_is_valid_life_time(life_time, expected):
+    assert is_valid_life_time(life_time) == expected
 
 def test_equals_ignored_classes():
     class IgnoredClass:
@@ -102,7 +118,6 @@ def test_deprecated_kwargs(warning_catcher):
     assert len(warning_catcher) == 1
     assert issubclass(warning_catcher[0].category, DeprecationWarning)
     assert "old_arg" in str(warning_catcher[0].message)
-
 
 def test_rename_kwargs():
     kwargs = {"old_arg": "value"}
