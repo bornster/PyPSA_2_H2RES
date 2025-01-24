@@ -1832,6 +1832,8 @@ def import_from_pandapower_net(
         component.static.replace({"bus0": to_replace}, inplace=True)
         component.static.replace({"bus1": to_replace}, inplace=True)
         
+        
+        
 def get_default_values(fuel_type: str, col_name: str) -> float:
     return ENERGY_SOURCES[fuel_type][col_name]
         
@@ -1916,6 +1918,16 @@ def validate_technology(carrier: str, technology: str) -> str:
     msg: str = f'Technology of type {technology} is not supported as a subtype of {carrier} in H2RES model. Allowed subtypes are {ENERGY_SOURCES[carrier.capitalize()]['technology']}'
     raise ValueError(msg)
 
+# def get_storage_data(df: pd.DataFrame, bus: str, col_name: str, default_value: float | str = np.NaN):
+#     if (col_name not in df.columns):
+#         return default_value
+#     storage_data = df.loc[df['bus'] == bus, col_name]
+#     if (storage_data.empty):
+#         storage_data = default_value
+#     else:
+#         storage_data = storage_data.iloc[0]
+#     return storage_data
+
 def export_to_h2res(
     n: Network,
     xml_folder_name: str | Path = "data",
@@ -1939,8 +1951,8 @@ def export_to_h2res(
         ramp_limit_up: float = validate_ramp_limits(row_data['ramp_limit_up'])
         ramp_limit_down: float = validate_ramp_limits(row_data['ramp_limit_down'])
         ramping_cost: float = row_data['ramping_cost'] if row_data['ramping_cost'] <= 0 else get_default_values(fuel_type,'ramping_cost')
-        co2_intenity: float = get_carrier_data(n.carriers, row_data['carrier'],fuel_type,'co2_emissions')
-        
+        co2_carrier_amount: float = get_carrier_data(n.carriers, row_data['carrier'],fuel_type,'co2_emissions')
+        co2_intensity = co2_carrier_amount/row_data['efficiency'] if row_data['efficiency'] != 0 else 0
         row = ET.Element('row')
         ET.SubElement(row, 'unit_name').text = str(index)
         ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
@@ -1955,37 +1967,24 @@ def export_to_h2res(
         ET.SubElement(row, 'cost_no_fuel').text = "0"
         ET.SubElement(row, 'cap_inv_cost').text = str(row_data['capital_cost'])
         ET.SubElement(row, 'ramping_cost').text = str(ramping_cost)
-        ET.SubElement(row, 'co2_intensity').text = str(co2_intenity)
-        #ET.SubElement(row, 'technology').text = validate_technology(fuel_type, row_data['technology'])
+        ET.SubElement(row, 'co2_intensity').text = str(co2_intensity)
+        ET.SubElement(row, 'technology').text = validate_technology(fuel_type, row_data['technology'])
         ET.SubElement(row, 'ramp_up_rate').text = str(ramp_limit_up)
         ET.SubElement(row, 'ramp_down_rate').text = str(ramp_limit_down)
         ET.SubElement(row, 'primary_reserve').text = "N"
         ET.SubElement(row, 'secondary_reserve').text = "N"
         ET.SubElement(row, 'stab_factor').text = "1"
-            
+        # ET.SubElement(row, 'chp_type').text = "TBD"
+        # ET.SubElement(row, 'sto_capacity').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_nom',0) * get_storage_data(n.storage_units,row_data['bus'],'max_hours',1))
+        # ET.SubElement(row, 'sto_self_discharge').text = str(get_storage_data(n.storage_units,row_data['bus'],'inflow'))
+        # ET.SubElement(row, 'sto_max_charging_power').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_store'))
+        # ET.SubElement(row, 'sto_charging_efficiency').text = str(get_storage_data(n.storage_units,row_data['bus'],'efficiency_store'))
+        # ET.SubElement(row, 'chp_power_to_heat').text = "0"
+        # ET.SubElement(row, 'chp_power_loss_factor').text = "0"
+        # ET.SubElement(row, 'chp_max_heat').text =  str(get_storage_data(n.storage_units,row_data['bus'],'p_nom'))    
             
         root.append(row)
     tree = ET.ElementTree(root)
     ET.indent(tree, space="\t", level=0)
     tree.write(fn, encoding="utf-8")
-
-
-#         # ET.SubElement(row, 'chp_type').text = "TBD"
-#         # ET.SubElement(row, 'sto_capacity').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_nom',0) * get_storage_data(n.storage_units,row_data['bus'],'max_hours',1))
-#         # ET.SubElement(row, 'sto_self_discharge').text = str(get_storage_data(n.storage_units,row_data['bus'],'inflow'))
-#         # ET.SubElement(row, 'sto_max_charging_power').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_store'))
-#         # ET.SubElement(row, 'sto_charging_efficiency').text = str(get_storage_data(n.storage_units,row_data['bus'],'efficiency_store'))
-#         # ET.SubElement(row, 'chp_power_to_heat').text = "0"
-#         # ET.SubElement(row, 'chp_power_loss_factor').text = "0"
-#         # ET.SubElement(row, 'chp_max_heat').text =  str(get_storage_data(n.storage_units,row_data['bus'],'p_nom'))
     
-    
-# def get_storage_data(df: pd.DataFrame, bus: str, col_name: str, default_value: float | str = np.NaN):
-#     if (col_name not in df.columns):
-#         return default_value
-#     storage_data = df.loc[df['bus'] == bus, col_name]
-#     if (storage_data.empty):
-#         storage_data = default_value
-#     else:
-#         storage_data = storage_data.iloc[0]
-#     return storage_data
