@@ -1832,8 +1832,8 @@ def import_from_pandapower_net(
         component.static.replace({"bus0": to_replace}, inplace=True)
         component.static.replace({"bus1": to_replace}, inplace=True)
         
-def get_final_life_cap(fuel_type: str) -> float:
-    return ENERGY_SOURCES[fuel_type]['final_life_cap']
+def get_default_values(fuel_type: str, col_name: str) -> float:
+    return ENERGY_SOURCES[fuel_type][col_name]
         
 def validate_fuel_type(fuel_type: str) -> str:
     """
@@ -1850,7 +1850,7 @@ def validate_fuel_type(fuel_type: str) -> str:
             If carrier is one of the allowed values, the value is returned. Else an exception is raised.
         """
     for key in ENERGY_SOURCES:
-        if (key.lower() in carrier.lower()):
+        if (key.lower() in fuel_type.lower()):
             return key
     msg: str = f'Carrier of type {fuel_type} is not supported in H2RES model'
     raise ValueError(msg)
@@ -1892,9 +1892,30 @@ def is_valid_life_time(life_time: float, fuel_type: str) -> bool:
             return ENERGY_SOURCES[fuel_type]["life_time"]
         return life_time
     
-# def get_max_inv_period(carriers_df: pd.DataFrame,fuel_type: str) -> float:
-#     if (fuel_type)
-    
+def get_carrier_data(carriers_df: pd.DataFrame,fuel_type: str, validated_fuel_type: str, const_attribute) -> float:
+    if (carriers_df.empty):
+        return ENERGY_SOURCES[validated_fuel_type][const_attribute]  
+    carrier = (carriers_df.loc[carriers_df.index == fuel_type, const_attribute])
+    if not carrier.empty:
+       carrier = carrier.iloc[0]
+
+    if (math.isinf(carrier) or pd.isna(carrier)):
+        return ENERGY_SOURCES[validated_fuel_type][const_attribute]  
+     
+    return carrier
+
+def validate_ramp_limits(ramp_limit: float) -> float: 
+    if (pd.isna(ramp_limit)):
+        return 0   
+    return ramp_limit
+
+
+def validate_technology(carrier: str, technology: str) -> str:
+    if (technology.upper() in ENERGY_SOURCES[carrier]['technology']):
+        return technology.upper()    
+    msg: str = f'Technology of type {technology} is not supported as a subtype of {carrier} in H2RES model. Allowed subtypes are {ENERGY_SOURCES[carrier.capitalize()]['technology']}'
+    raise ValueError(msg)
+
 def export_to_h2res(
     n: Network,
     xml_folder_name: str | Path = "data",
@@ -1906,13 +1927,20 @@ def export_to_h2res(
     
     fn = path.joinpath('genco_data_HR_sdewes.xml')
     root = ET.Element('data')
+    
     for index, row_data in n.generators.iterrows(): 
+        print(row_data)
         fuel_type: str = validate_fuel_type(row_data['carrier'])
         life_time: float = is_valid_life_time(row_data['lifetime'], fuel_type)
         decom_start_existing_cap: float = get_decomission_data(life_time,10)
         decom_start_new: float = get_decomission_data(life_time,5)
-        final_life_cap: float = get_final_life_cap(fuel_type)
-        max_inv_period: float = get_max_inv_period(n.carriers, row_data['carrier'])
+        final_life_cap: float = get_default_values(fuel_type, 'final_life_cap')
+        max_inv_period: float = get_carrier_data(n.carriers, row_data['carrier'],fuel_type,'max_growth')
+        ramp_limit_up: float = validate_ramp_limits(row_data['ramp_limit_up'])
+        ramp_limit_down: float = validate_ramp_limits(row_data['ramp_limit_down'])
+        ramping_cost: float = row_data['ramping_cost'] if row_data['ramping_cost'] <= 0 else get_default_values(fuel_type,'ramping_cost')
+        co2_intenity: float = get_carrier_data(n.carriers, row_data['carrier'],fuel_type,'co2_emissions')
+        
         row = ET.Element('row')
         ET.SubElement(row, 'unit_name').text = str(index)
         ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
@@ -1921,16 +1949,16 @@ def export_to_h2res(
         ET.SubElement(row, 'life_time').text = str(life_time)
         ET.SubElement(row, 'decom_start_new').text = str(decom_start_new)
         ET.SubElement(row, 'final_life_cap').text = str(final_life_cap)
-            #ET.SubElement(row, 'max_inv_period').text = get_max_inv_period(fuel_type)
-            # ET.SubElement(row, 'cap_factor').text = str(row_data['p_max_pu'])
-            # ET.SubElement(row, 'efficiency').text = str(row_data['efficiency'])
-            # ET.SubElement(row, 'cost_no_fuel').text = "0"
-            # ET.SubElement(row, 'cap_inv_cost').text = str(row_data['capital_cost'])
-            # ET.SubElement(row, 'ramping_cost').text = "TBD"
-            # ET.SubElement(row, 'co2_intensity').text = "TBD"
-            # ET.SubElement(row, 'technology').text = validate_technology(fuel_type, row_data['technology'])
-            # ET.SubElement(row, 'ramp_up_rate').text = str(row_data['ramp_limit_up'])
-            # ET.SubElement(row, 'ramp_down_rate').text = str(row_data['ramp_limit_down'])
+        ET.SubElement(row, 'max_inv_period').text = str(max_inv_period)
+        ET.SubElement(row, 'cap_factor').text = "1"
+        ET.SubElement(row, 'efficiency').text = str(row_data['efficiency'])
+        ET.SubElement(row, 'cost_no_fuel').text = "0"
+        ET.SubElement(row, 'cap_inv_cost').text = str(row_data['capital_cost'])
+        ET.SubElement(row, 'ramping_cost').text = str(ramping_cost)
+        ET.SubElement(row, 'co2_intensity').text = str(co2_intenity)
+        #ET.SubElement(row, 'technology').text = validate_technology(fuel_type, row_data['technology'])
+        ET.SubElement(row, 'ramp_up_rate').text = str(ramp_limit_up)
+        ET.SubElement(row, 'ramp_down_rate').text = str(ramp_limit_down)
         ET.SubElement(row, 'primary_reserve').text = "N"
         ET.SubElement(row, 'secondary_reserve').text = "N"
         ET.SubElement(row, 'stab_factor').text = "1"
@@ -1961,14 +1989,3 @@ def export_to_h2res(
 #     else:
 #         storage_data = storage_data.iloc[0]
 #     return storage_data
-    
-
-# def validate_technology(carrier: str, technology: str) -> str:
-#     msg: str = f'Technology of type {technology} is not supported as a subtype of {carrier} in H2RES model. Allowed subtypes are {ENERGY_SOURCES[carrier.capitalize()]['technology']}'
-#     if (pd.isna(technology) or technology == ''):
-#         raise ValueError(msg)
-
-#     if (carrier in ENERGY_SOURCES):
-#             if (technology.upper() in ENERGY_SOURCES[carrier]['technology']):
-#                 return technology.upper()    
-#     raise ValueError(f'Carrier of type {carrier} is not supported in H2RES model. Allowed types include {ENERGY_SOURCES.keys()}')
