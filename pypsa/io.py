@@ -11,7 +11,7 @@ import os
 from abc import abstractmethod
 from collections.abc import Collection, Iterable, Sequence
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 from urllib.request import urlretrieve
 
 
@@ -1898,9 +1898,12 @@ def get_carrier_data(carriers_df: pd.DataFrame,fuel_type: str, validated_fuel_ty
     if (carriers_df.empty):
         return ENERGY_SOURCES[validated_fuel_type][const_attribute]  
     carrier = (carriers_df.loc[carriers_df.index == fuel_type, const_attribute])
-    if not carrier.empty:
-       carrier = carrier.iloc[0]
-
+    
+    if carrier.empty:
+        return ENERGY_SOURCES[validated_fuel_type][const_attribute]  
+       
+    carrier = carrier.iloc[0]
+       
     if (math.isinf(carrier) or pd.isna(carrier)):
         return ENERGY_SOURCES[validated_fuel_type][const_attribute]  
      
@@ -1918,15 +1921,46 @@ def validate_technology(carrier: str, technology: str) -> str:
     msg: str = f'Technology of type {technology} is not supported as a subtype of {carrier} in H2RES model. Allowed subtypes are {ENERGY_SOURCES[carrier.capitalize()]['technology']}'
     raise ValueError(msg)
 
-# def get_storage_data(df: pd.DataFrame, bus: str, col_name: str, default_value: float | str = np.NaN):
-#     if (col_name not in df.columns):
-#         return default_value
-#     storage_data = df.loc[df['bus'] == bus, col_name]
-#     if (storage_data.empty):
-#         storage_data = default_value
-#     else:
-#         storage_data = storage_data.iloc[0]
-#     return storage_data
+def is_hydro_or_heat(carrier_data: pd.Series):
+    if (carrier_data.empty):
+        return False
+    carrier_data = carrier_data.iloc[0]
+    if (carrier_data.title() == 'Hydro' or carrier_data.title() == 'Heat'):
+        return True
+    return False
+
+def get_storage_capacity(storage_data_row: pd.Series) -> float:
+    if (is_hydro_or_heat(storage_data_row['carrier'])):
+        capacity = storage_data_row.get('sto_capacity', pd.Series())
+        
+        if not capacity.empty:
+            if capacity.iloc[0] == 0.0:
+                p_nom = storage_data_row.get('p_nom', pd.Series())
+                max_hours = storage_data_row.get('max_hours', pd.Series())
+                if not (p_nom.empty and max_hours.empty):
+                    return p_nom.iloc[0] * max_hours.iloc[0]
+                return 0.0
+            
+            return capacity.iloc[0]
+    return 0.0
+    
+
+    # if (storage_data.title() == 'Hydro' or storage_data.title()):
+    # print(storage_data)
+    # if (storage_data.empty):
+    #     storage_data = default_value
+    # else:
+    #     storage_data = storage_data.iloc[0]
+    # return storage_data
+
+def validate_chp_type(is_chp: Literal["Y","N"]):
+    if is_chp.upper() == "Y":
+        return True
+    elif is_chp.upper() == "N": 
+        return False
+    else:
+        msg = f'H2RES does not support chp_type values {is_chp}. Allowed values are \"Y\" and \"N\"'
+        raise ValueError(msg)
 
 def export_to_h2res(
     n: Network,
@@ -1941,7 +1975,6 @@ def export_to_h2res(
     root = ET.Element('data')
     
     for index, row_data in n.generators.iterrows(): 
-        print(row_data)
         fuel_type: str = validate_fuel_type(row_data['carrier'])
         life_time: float = is_valid_life_time(row_data['lifetime'], fuel_type)
         decom_start_existing_cap: float = get_decomission_data(life_time,10)
@@ -1953,6 +1986,11 @@ def export_to_h2res(
         ramping_cost: float = row_data['ramping_cost'] if row_data['ramping_cost'] <= 0 else get_default_values(fuel_type,'ramping_cost')
         co2_carrier_amount: float = get_carrier_data(n.carriers, row_data['carrier'],fuel_type,'co2_emissions')
         co2_intensity = co2_carrier_amount/row_data['efficiency'] if row_data['efficiency'] != 0 else 0
+        is_chp: bool = validate_chp_type(row_data['chp_type'])
+        chp: Literal["Y", "N"] = (row_data['chp_type']).upper()
+        storage_data_row = n.storage_units.loc[n.storage_units['bus'] == row_data['bus']]
+        storage_capacity: float = get_storage_capacity(storage_data_row)
+
         row = ET.Element('row')
         ET.SubElement(row, 'unit_name').text = str(index)
         ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
@@ -1968,14 +2006,14 @@ def export_to_h2res(
         ET.SubElement(row, 'cap_inv_cost').text = str(row_data['capital_cost'])
         ET.SubElement(row, 'ramping_cost').text = str(ramping_cost)
         ET.SubElement(row, 'co2_intensity').text = str(co2_intensity)
-        ET.SubElement(row, 'technology').text = validate_technology(fuel_type, row_data['technology'])
+        #ET.SubElement(row, 'technology').text = validate_technology(fuel_type, row_data['technology'])
         ET.SubElement(row, 'ramp_up_rate').text = str(ramp_limit_up)
         ET.SubElement(row, 'ramp_down_rate').text = str(ramp_limit_down)
         ET.SubElement(row, 'primary_reserve').text = "N"
         ET.SubElement(row, 'secondary_reserve').text = "N"
         ET.SubElement(row, 'stab_factor').text = "1"
-        # ET.SubElement(row, 'chp_type').text = "TBD"
-        # ET.SubElement(row, 'sto_capacity').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_nom',0) * get_storage_data(n.storage_units,row_data['bus'],'max_hours',1))
+        ET.SubElement(row, 'chp_type').text = chp
+        ET.SubElement(row, 'sto_capacity').text = str(storage_capacity)
         # ET.SubElement(row, 'sto_self_discharge').text = str(get_storage_data(n.storage_units,row_data['bus'],'inflow'))
         # ET.SubElement(row, 'sto_max_charging_power').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_store'))
         # ET.SubElement(row, 'sto_charging_efficiency').text = str(get_storage_data(n.storage_units,row_data['bus'],'efficiency_store'))
