@@ -16,8 +16,6 @@ e_sum_max,float,MWh,inf,The maximum total energy produced during a single optimi
 q_set,static or series,MVar,0.,reactive power set point (for PF),Input (optional)
 sign,float,n/a,1,power sign,Input (optional)
 carrier,string,n/a,n/a,"Prime mover energy carrier (e.g. coal, gas, wind, solar); required for global constraints on primary energy in optimization",Input (optional)
-technology,string,n/a,n/a,"Subtype of energy carriers.",Input (optional)
-Set,string,n/a,n/a,"Subtype of energy carriers.",Input (optional)
 marginal_cost,static or series,currency/MWh,0.,Marginal cost of production of 1 MWh.,Input (optional)
 marginal_cost_quadratic,static or series,currency/MWh,0.,Quadratic marginal cost of production of 1 MWh.,Input (optional)
 active,boolean,n/a,True,"Whether to consider the component in basic functionality or not",Input (optional)
@@ -37,7 +35,13 @@ ramp_limit_up,static or series,per unit,NaN,"Maximum active power increase from 
 ramp_limit_down,static or series,per unit,NaN,"Maximum active power decrease from one snapshot to the next, per unit of the nominal power. Ignored if NaN.",Input (optional)
 ramp_limit_start_up,float,per unit,1,"Maximum active power increase at start up, per unit of the nominal power.   Only read if committable is True.",Input (optional)
 ramp_limit_shut_down,float,per unit,1,"Maximum active power decrease at shut down, per unit of the nominal power.   Only read if committable is True.",Input (optional)
+ramping_cost,float,currency/Mw,0.,"The cost of changing the output power of a thermal power plant.",Input (optional)
 weight,float,n/a,1,"Weighting of a generator. Only used for network clustering.",Input (optional)
+technology,string,n/a,n/a,"Subtype of energy carriers.",Input (optional)
+chp_type,string,n/a,"N","A variable which indicates if the generator participates in district heating (e.g. Y or N).",Input (optional)
+chp_power_to_heat,float,Mwh,n/a,"The ratio of thermal to electric power in a cogenerated plant.",Input (optional)
+chp_power_loss_factor,float,n/a,n/a,"The ratio of thermal power lost in a cogenerated plant.",Input (optional)
+chp_max_heat,float,Mw,n/a,"The maximum power that the thermal storage system can deliver",Input (optional)
 p,series,MW,0.,active power at bus (positive if net generation),Output
 q,series,MVar,0.,reactive power (positive if net generation),Output
 p_nom_opt,float,MW,0.,Optimised nominal power.,Output

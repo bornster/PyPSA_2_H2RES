@@ -32,6 +32,10 @@ efficiency_store,static or series,per unit,1,Efficiency of storage on the way in
 efficiency_dispatch,static or series,per unit,1,Efficiency of storage on the way out of the storage.,Input (optional)
 standing_loss,static or series,per unit,0,Losses per hour to state of charge.,Input (optional)
 inflow,static or series,MW,0,"Inflow to the state of charge, e.g. due to river inflow in hydro reservoir.",Input (optional)
+sto_capacity,float,MWh,0,"Storage size of the powerplant",Input (optional)
+sto_self_discharge,float,per unit,0,"Energy loss from the storage system.",Input (optional)
+sto_max_charging_power,float, MW,0, "Maximum power with which the storage system can be charged.",Input (optional)
+sto_charging_efficiency,float,per unit,0,"Efficiency of the storage charging process.",Input (optional)
 p,series,MW,0,active power at bus (positive if net generation),Output
 p_dispatch,series,MW,0,active power dispatch at bus,Output
 p_store,series,MW,0,active power charging at bus,Output
