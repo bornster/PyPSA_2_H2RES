@@ -2052,13 +2052,28 @@ def export_to_h2res(
         is_chp: bool = validate_chp_type(row_data['chp_type'])
         chp: Literal["Y", "N"] = (row_data['chp_type']).upper()
         storage_data_row = n.storage_units.loc[n.storage_units['bus'] == row_data['bus']]
-        storage_capacity: float = get_storage_capacity(storage_data_row)
-        self_discharge: float = get_self_discharge(storage_data_row)
-        sto_max_charging_power: float = get_sto_max_charging_power(storage_data_row)
-        sto_charging_efficiency: float = get_sto_charging_efficiency(storage_data_row)
-        chp_power_to_heat: float = row_data['chp_power_to_heat'] if not (is_default_value(row_data['chp_power_to_heat'])) else row_data['p_nom']
-        chp_power_loss: float = row['chp_power_loss_factor'] if not (is_default_value(row_data['chp_power_loss_factor'])) else 0.18
-        chp_max_heat: float = row['chp_max_heat'] if not (is_default_value(row_data['chp_max_heat'])) else row_data['p_nom']
+        
+        storage_capacity: float = 0.0
+        self_discharge: float = 0.0
+        sto_max_charging_power: float = 0.0
+        sto_charging_efficiency: float = 0.0
+        chp_power_to_heat: float = 0.0
+        chp_power_loss: float = 0.0
+        chp_max_heat: float = 0.0
+        
+        if (fuel_type == "Hydro" or fuel_type == "Heat"):
+            storage_capacity = get_storage_capacity(storage_data_row)
+            self_discharge = get_self_discharge(storage_data_row)
+        
+        if (fuel_type == "Hydro"):
+            sto_max_charging_power = get_sto_max_charging_power(storage_data_row)
+            sto_charging_efficiency = get_sto_charging_efficiency(storage_data_row)
+        
+        if (is_chp):
+            chp_power_to_heat = row_data['chp_power_to_heat'] if not (is_default_value(row_data['chp_power_to_heat'])) else row_data['p_nom']
+            chp_power_loss = row['chp_power_loss_factor'] if not (is_default_value(row_data['chp_power_loss_factor'])) else 0.18
+            chp_max_heat = row['chp_max_heat'] if not (is_default_value(row_data['chp_max_heat'])) else row_data['p_nom']
+            
         row = ET.Element('row')
         ET.SubElement(row, 'unit_name').text = str(index)
         ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
@@ -2074,7 +2089,7 @@ def export_to_h2res(
         ET.SubElement(row, 'cap_inv_cost').text = str(row_data['capital_cost'])
         ET.SubElement(row, 'ramping_cost').text = str(ramping_cost)
         ET.SubElement(row, 'co2_intensity').text = str(co2_intensity)
-        #ET.SubElement(row, 'technology').text = validate_technology(fuel_type, row_data['technology'])
+        ET.SubElement(row, 'technology').text = validate_technology(fuel_type, row_data['technology'])
         ET.SubElement(row, 'ramp_up_rate').text = str(ramp_limit_up)
         ET.SubElement(row, 'ramp_down_rate').text = str(ramp_limit_down)
         ET.SubElement(row, 'primary_reserve').text = "N"
