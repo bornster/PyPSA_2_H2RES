@@ -1832,7 +1832,52 @@ def import_from_pandapower_net(
         component.static.replace({"bus0": to_replace}, inplace=True)
         component.static.replace({"bus1": to_replace}, inplace=True)
         
-        
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
         
 def get_default_values(fuel_type: str, col_name: str) -> float:
     return ENERGY_SOURCES[fuel_type][col_name]
@@ -1944,15 +1989,7 @@ def get_storage_capacity(storage_data_row: pd.Series) -> float:
             return capacity.iloc[0]
     return 0.0
     
-
-    # if (storage_data.title() == 'Hydro' or storage_data.title()):
-    # print(storage_data)
-    # if (storage_data.empty):
-    #     storage_data = default_value
-    # else:
-    #     storage_data = storage_data.iloc[0]
-    # return storage_data
-
+    
 def validate_chp_type(is_chp: Literal["Y","N"]):
     if is_chp.upper() == "Y":
         return True
@@ -1961,6 +1998,32 @@ def validate_chp_type(is_chp: Literal["Y","N"]):
     else:
         msg = f'H2RES does not support chp_type values {is_chp}. Allowed values are \"Y\" and \"N\"'
         raise ValueError(msg)
+    
+def get_self_discharge(storage_data_row: pd.Series) -> float: 
+    self_discharge = storage_data_row.get('standing_loss', pd.Series())
+    if (self_discharge.empty):
+        return 0.01
+    return self_discharge.iloc[0]
+
+def get_sto_max_charging_power(storage_data_row: pd.Series) -> float:
+    sto_max_charging_power = storage_data_row.get('sto_max_charging_power', pd.Series([0.0]))
+    
+    if (sto_max_charging_power == 0.0).all():
+        p_nom = storage_data_row.get('p_nom', pd.Series([0.0]))
+        return p_nom.iloc[0]
+    
+    return sto_max_charging_power.iloc[0]
+
+def get_sto_charging_efficiency(storage_data_row: pd.Series) -> float:
+    sto_charging_efficiency = storage_data_row.get('sto_charging_efficiency', pd.Series([0.0]))
+    if (sto_charging_efficiency == 0.0).all():
+        return 0.75
+    return sto_charging_efficiency.iloc[0]
+
+def is_default_value(value: float) -> float:
+    if (pd.isna(value)):
+        return True
+    return False
 
 def export_to_h2res(
     n: Network,
@@ -1990,7 +2053,12 @@ def export_to_h2res(
         chp: Literal["Y", "N"] = (row_data['chp_type']).upper()
         storage_data_row = n.storage_units.loc[n.storage_units['bus'] == row_data['bus']]
         storage_capacity: float = get_storage_capacity(storage_data_row)
-
+        self_discharge: float = get_self_discharge(storage_data_row)
+        sto_max_charging_power: float = get_sto_max_charging_power(storage_data_row)
+        sto_charging_efficiency: float = get_sto_charging_efficiency(storage_data_row)
+        chp_power_to_heat: float = row_data['chp_power_to_heat'] if not (is_default_value(row_data['chp_power_to_heat'])) else row_data['p_nom']
+        chp_power_loss: float = row['chp_power_loss_factor'] if not (is_default_value(row_data['chp_power_loss_factor'])) else 0.18
+        chp_max_heat: float = row['chp_max_heat'] if not (is_default_value(row_data['chp_max_heat'])) else row_data['p_nom']
         row = ET.Element('row')
         ET.SubElement(row, 'unit_name').text = str(index)
         ET.SubElement(row, 'cap_mw').text = str(row_data['p_nom'])
@@ -2014,12 +2082,12 @@ def export_to_h2res(
         ET.SubElement(row, 'stab_factor').text = "1"
         ET.SubElement(row, 'chp_type').text = chp
         ET.SubElement(row, 'sto_capacity').text = str(storage_capacity)
-        # ET.SubElement(row, 'sto_self_discharge').text = str(get_storage_data(n.storage_units,row_data['bus'],'inflow'))
-        # ET.SubElement(row, 'sto_max_charging_power').text = str(get_storage_data(n.storage_units,row_data['bus'],'p_store'))
-        # ET.SubElement(row, 'sto_charging_efficiency').text = str(get_storage_data(n.storage_units,row_data['bus'],'efficiency_store'))
-        # ET.SubElement(row, 'chp_power_to_heat').text = "0"
-        # ET.SubElement(row, 'chp_power_loss_factor').text = "0"
-        # ET.SubElement(row, 'chp_max_heat').text =  str(get_storage_data(n.storage_units,row_data['bus'],'p_nom'))    
+        ET.SubElement(row, 'sto_self_discharge').text = str(self_discharge)
+        ET.SubElement(row, 'sto_max_charging_power').text = str(sto_max_charging_power)
+        ET.SubElement(row, 'sto_charging_efficiency').text =  str(sto_charging_efficiency)
+        ET.SubElement(row, 'chp_power_to_heat').text = str(chp_power_to_heat)
+        ET.SubElement(row, 'chp_power_loss_factor').text = str(chp_power_loss)
+        ET.SubElement(row, 'chp_max_heat').text =  str(chp_max_heat)
             
         root.append(row)
     tree = ET.ElementTree(root)
