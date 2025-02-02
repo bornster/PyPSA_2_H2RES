@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar
 from urllib.request import urlretrieve
 
 
-from pypsa.constants import DECOM_START_EXISTING_CAP_DEFAULT_VALUE, DECOM_START_NEW_DEFAULT_VALUE, ENERGY_SOURCES
+from pypsa.constants import CHP_POWER_LOSS_FACTOR_DEFAULT_VALUE, DECOM_START_EXISTING_CAP_DEFAULT_VALUE, DECOM_START_NEW_DEFAULT_VALUE, ENERGY_SOURCES, STO_CHARGING_EFFICIENCY_DEFAULT_VALUE, STO_SELF_DISCHARGE_DEFAULT_VALUE
 from pypsa.utils import check_optional_dependency, deprecated_common_kwargs, sanitize_columns
 
 try:
@@ -1831,53 +1831,6 @@ def import_from_pandapower_net(
     for component in n.iterate_components({"Line", "Transformer"}):
         component.static.replace({"bus0": to_replace}, inplace=True)
         component.static.replace({"bus1": to_replace}, inplace=True)
-        
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      
 
 def validate_fuel_type(fuel_type: str) -> str:
     for key in ENERGY_SOURCES:
@@ -1932,29 +1885,17 @@ def validate_technology(carrier: str, technology: str) -> str:
     msg: str = f'Technology of type {technology} is not supported as a subtype of {carrier} in H2RES model. Allowed subtypes are {ENERGY_SOURCES[carrier.capitalize()]['technology']}'
     raise ValueError(msg)
 
-def is_hydro_or_heat(carrier_data: pd.Series):
-    if (carrier_data.empty):
-        return False
-    carrier_data = carrier_data.iloc[0]
-    if (carrier_data.title() == 'Hydro' or carrier_data.title() == 'Heat'):
-        return True
-    return False
-
 def get_storage_capacity(storage_data_row: pd.Series) -> float:
-    if (is_hydro_or_heat(storage_data_row['carrier'])):
         capacity = storage_data_row.get('sto_capacity', pd.Series())
-        
-        if not capacity.empty:
-            if capacity.iloc[0] == 0.0:
-                p_nom = storage_data_row.get('p_nom', pd.Series())
-                max_hours = storage_data_row.get('max_hours', pd.Series())
-                if not (p_nom.empty and max_hours.empty):
-                    return p_nom.iloc[0] * max_hours.iloc[0]
-                return 0.0
-            
+
+        if not capacity.empty and capacity.iloc[0] != 0.0:
             return capacity.iloc[0]
-    return 0.0
-    
+            
+        p_nom = storage_data_row.get('p_nom', pd.Series())
+        max_hours = storage_data_row.get('max_hours', pd.Series())
+        if not (p_nom.empty and max_hours.empty):
+            return p_nom.iloc[0] * max_hours.iloc[0]
+        return 0.0
     
 def is_chp_type(is_chp: Literal["Y","N"]):
     if is_chp.upper() == "Y":
@@ -1967,30 +1908,30 @@ def is_chp_type(is_chp: Literal["Y","N"]):
     
 def get_self_discharge(storage_data_row: pd.Series) -> float: 
     self_discharge = storage_data_row.get('standing_loss', pd.Series())
-    if (self_discharge.empty):
-        return 0.01
+    print(self_discharge)
+    if (self_discharge.empty or self_discharge.iloc[0] == 0.0):
+        return STO_SELF_DISCHARGE_DEFAULT_VALUE
+    
     return self_discharge.iloc[0]
 
 def get_sto_max_charging_power(storage_data_row: pd.Series) -> float:
-    sto_max_charging_power = storage_data_row.get('sto_max_charging_power', pd.Series([0.0]))
-    
-    if (sto_max_charging_power == 0.0).all():
-        p_nom = storage_data_row.get('p_nom', pd.Series([0.0]))
+    sto_max_charging_power = storage_data_row.get('sto_max_charging_power', pd.Series())
+
+    if sto_max_charging_power.empty or sto_max_charging_power.iloc[0] == 0.0:
+        p_nom = storage_data_row.get('p_nom', pd.Series())
+        if (p_nom.empty):
+            return 0.0
         return p_nom.iloc[0]
     
     return sto_max_charging_power.iloc[0]
 
 def get_sto_charging_efficiency(storage_data_row: pd.Series) -> float:
-    sto_charging_efficiency = storage_data_row.get('sto_charging_efficiency', pd.Series([0.0]))
-    if (sto_charging_efficiency == 0.0).all():
-        return 0.75
+    sto_charging_efficiency = storage_data_row.get('sto_charging_efficiency', pd.Series())
+    
+    if sto_charging_efficiency.empty or sto_charging_efficiency.iloc[0] == 0.0:
+        return STO_CHARGING_EFFICIENCY_DEFAULT_VALUE
     return sto_charging_efficiency.iloc[0]
-
-def is_default_value(value: float) -> float:
-    if (pd.isna(value)):
-        return True
-    return False
-
+    
 
 def generate_row(elements: dict) -> ET.Element:
     row = ET.Element('row')
@@ -2006,7 +1947,23 @@ def generate_row_data(index: str, generator_row_data: pd.Series, carrier_df: pd.
     ramping_cost: float = ENERGY_SOURCES[fuel_type]['ramping_cost'] if generator_row_data['ramping_cost'] <= 0 else generator_row_data['ramping_cost'] 
     co2_carrier_value: float = ENERGY_SOURCES[fuel_type]['co2_emissions'] if is_default_co2_emissions(carrier_df, generator_row_data['carrier']) else carrier_df.loc[carrier_df.index == generator_row_data['carrier'], 'co2_emissions'].iloc[0]
     co2_intensity: float =  co2_carrier_value/generator_row_data['efficiency'] if generator_row_data['efficiency'] != 0 else 0 
+    is_chp: bool = is_chp_type(generator_row_data['chp_type'])
+
+    storage_capacity = self_discharge = sto_max_charging_power = sto_charging_efficiency = 0.0
+    chp_power_to_heat = chp_power_loss = chp_max_heat = 0.0
     
+    if (fuel_type == "Hydro" or is_chp):
+            storage_capacity = get_storage_capacity(storage_unit_row_data)
+            self_discharge = get_self_discharge(storage_unit_row_data)   
+            
+    if (fuel_type == "Hydro"):
+            sto_max_charging_power = get_sto_max_charging_power(storage_unit_row_data)
+            sto_charging_efficiency = get_sto_charging_efficiency(storage_unit_row_data)
+        
+    if (is_chp):
+            chp_power_to_heat = generator_row_data['chp_power_to_heat'] if not (pd.isna(generator_row_data['chp_power_to_heat'])) else generator_row_data['p_nom']
+            chp_power_loss = generator_row_data['chp_power_loss_factor'] if not (pd.isna(generator_row_data['chp_power_loss_factor'])) else CHP_POWER_LOSS_FACTOR_DEFAULT_VALUE
+            chp_max_heat = generator_row_data['chp_max_heat'] if not (pd.isna(generator_row_data['chp_max_heat'])) else generator_row_data['p_nom']
     
     return {
         'unit_name': index,
@@ -2029,33 +1986,15 @@ def generate_row_data(index: str, generator_row_data: pd.Series, carrier_df: pd.
         'primary_reserve': 'N',
         'secondary_reserve': 'N',
         'stab_factor': 1,
-        
+        'chp': (generator_row_data['chp_type']).upper(),
+        'sto_capacity': storage_capacity,
+        'sto_self_discharge': self_discharge,
+        'sto_max_charging_power': sto_max_charging_power,
+        'sto_charging_efficiency': sto_charging_efficiency,
+        'chp_power_to_heat': chp_power_to_heat,
+        'chp_power_loss': chp_power_loss,
+        'chp_max_heat': chp_max_heat  
     }
-
-    #     is_chp: bool = is_chp_type(row_data['chp_type'])
-    #     chp: Literal["Y", "N"] = (row_data['chp_type']).upper()
-    #     storage_data_row = n.storage_units.loc[n.storage_units['bus'] == row_data['bus']]
-        
-    #     storage_capacity: float = 0.0
-    #     self_discharge: float = 0.0
-    #     sto_max_charging_power: float = 0.0
-    #     sto_charging_efficiency: float = 0.0
-    #     chp_power_to_heat: float = 0.0
-    #     chp_power_loss: float = 0.0
-    #     chp_max_heat: float = 0.0
-        
-    #     if (fuel_type == "Hydro" or fuel_type == "Heat"):
-    #         storage_capacity = get_storage_capacity(storage_data_row)
-    #         self_discharge = get_self_discharge(storage_data_row)
-        
-    #     if (fuel_type == "Hydro"):
-    #         sto_max_charging_power = get_sto_max_charging_power(storage_data_row)
-    #         sto_charging_efficiency = get_sto_charging_efficiency(storage_data_row)
-        
-    #     if (is_chp):
-    #         chp_power_to_heat = row_data['chp_power_to_heat'] if not (is_default_value(row_data['chp_power_to_heat'])) else row_data['p_nom']
-    #         chp_power_loss = row['chp_power_loss_factor'] if not (is_default_value(row_data['chp_power_loss_factor'])) else 0.18
-    #         chp_max_heat = row['chp_max_heat'] if not (is_default_value(row_data['chp_max_heat'])) else row_data['p_nom']
 
 def export_to_h2res(
     n: Network,
@@ -2075,7 +2014,6 @@ def export_to_h2res(
     for index, row_data in n.generators.iterrows():
         storage_unit_row_data = n.storage_units.loc[n.storage_units['bus'] == row_data['bus']]
         row_elements = generate_row_data(index, row_data, n.carriers,storage_unit_row_data)
-        #print(row_elements)
         row = generate_row(row_elements)   
         root.append(row)
     tree = ET.ElementTree(root)
