@@ -307,26 +307,3 @@ def check_optional_dependency(module_name: str, install_message: str) -> None:
         __import__(module_name)
     except ImportError:
         raise ImportError(install_message)
-
-
-def sanitize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Sanitize column names of a DataFrame.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame to sanitize.
-
-    Returns
-    -------
-    pd.DataFrame
-        Sanitized DataFrame.
-    """
-
-    df.columns = df.columns.str.strip().str.replace(' ', '_')
-    for col_name, col_type in df.dtypes.items():
-        if is_numeric_dtype(col_type):
-            if col_name[0].isdigit():
-                df.rename(columns={col_name: f'_{col_name}'}, inplace=True)
-    return df
