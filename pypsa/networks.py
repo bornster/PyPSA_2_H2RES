@@ -55,7 +55,6 @@ from pypsa.io import (
     _import_components_from_df,
     _import_series_from_df,
     export_to_csv_folder,
-    export_to_xml_folder,
     export_to_hdf5,
     export_to_netcdf,
     import_components_from_dataframe,
@@ -213,7 +212,6 @@ class Network:
     # from pypsa.io
     import_from_csv_folder = import_from_csv_folder
     export_to_csv_folder = export_to_csv_folder
-    export_to_xml_folder = export_to_xml_folder
     export_to_h2res = export_to_h2res
     import_from_hdf5 = import_from_hdf5
     export_to_hdf5 = export_to_hdf5
