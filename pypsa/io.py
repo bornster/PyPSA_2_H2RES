@@ -1908,7 +1908,7 @@ def is_chp_type(is_chp: Literal["Y","N"]):
     
 def get_self_discharge(storage_data_row: pd.Series) -> float: 
     self_discharge = storage_data_row.get('standing_loss', pd.Series())
-    print(self_discharge)
+
     if (self_discharge.empty or self_discharge.iloc[0] == 0.0):
         return STO_SELF_DISCHARGE_DEFAULT_VALUE
     
@@ -1945,8 +1945,7 @@ def generate_row_data(index: str, generator_row_data: pd.Series, carrier_df: pd.
     life_time: float = generator_row_data['lifetime'] if is_valid_life_time(generator_row_data['lifetime']) else ENERGY_SOURCES[fuel_type]['life_time']
     max_inv_period: float = ENERGY_SOURCES[fuel_type]['max_growth'] if is_default_max_growth(carrier_df, generator_row_data['carrier']) else carrier_df.loc[carrier_df.index == generator_row_data['carrier'], 'max_growth'].iloc[0]
     ramping_cost: float = ENERGY_SOURCES[fuel_type]['ramping_cost'] if generator_row_data['ramping_cost'] <= 0 else generator_row_data['ramping_cost'] 
-    co2_carrier_value: float = ENERGY_SOURCES[fuel_type]['co2_emissions'] if is_default_co2_emissions(carrier_df, generator_row_data['carrier']) else carrier_df.loc[carrier_df.index == generator_row_data['carrier'], 'co2_emissions'].iloc[0]
-    co2_intensity: float =  co2_carrier_value/generator_row_data['efficiency'] if generator_row_data['efficiency'] != 0 else 0 
+    co2_intensity: float = ENERGY_SOURCES[fuel_type]['co2_emissions'] if is_default_co2_emissions(carrier_df, generator_row_data['carrier']) else carrier_df.loc[carrier_df.index == generator_row_data['carrier'], 'co2_emissions'].iloc[0]
     is_chp: bool = is_chp_type(generator_row_data['chp_type'])
 
     storage_capacity = self_discharge = sto_max_charging_power = sto_charging_efficiency = 0.0
