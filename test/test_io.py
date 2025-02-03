@@ -50,22 +50,6 @@ def test_csv_io_Path(scipy_network, tmpdir):
     fn = Path(os.path.join(tmpdir, "csv_export"))
     scipy_network.export_to_csv_folder(fn)
     pypsa.Network(fn)
-    
-    
-@pytest.mark.parametrize("meta", [{"test": "test"}, {"test": {"test": "test"}}])
-def test_xml_io(scipy_network, tmp_path, meta):
-    fn = os.path.join(tmp_path, "xml_export")
-    scipy_network.meta = meta
-    scipy_network.export_to_xml_folder(fn)
-    pypsa.Network(fn)
-    reloaded = pypsa.Network(fn)
-    assert reloaded.meta == scipy_network.meta
-    
-def test_xml_io_Path(scipy_network, tmp_path):
-    fn = Path(os.path.join(tmp_path, "xml_export"))
-    scipy_network.export_to_xml_folder(fn)
-    pypsa.Network(fn)
-
 
 @pytest.mark.parametrize("meta", [{"test": "test"}, {"test": {"test": "test"}}])
 def test_hdf5_io(scipy_network, tmpdir, meta):

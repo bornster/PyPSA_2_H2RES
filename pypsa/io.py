@@ -16,7 +16,7 @@ from urllib.request import urlretrieve
 
 
 from pypsa.constants import CHP_POWER_LOSS_FACTOR_DEFAULT_VALUE, DECOM_START_EXISTING_CAP_DEFAULT_VALUE, DECOM_START_NEW_DEFAULT_VALUE, ENERGY_SOURCES, STO_CHARGING_EFFICIENCY_DEFAULT_VALUE, STO_SELF_DISCHARGE_DEFAULT_VALUE
-from pypsa.utils import check_optional_dependency, deprecated_common_kwargs, sanitize_columns
+from pypsa.common import check_optional_dependency, deprecated_common_kwargs
 
 try:
     from cloudpathlib import AnyPath as Path
@@ -191,63 +191,7 @@ class ImporterCSV(Importer):
                     parse_dates=True,
                 )
                 yield attr, df
-
-
-class  ExporterXML(Exporter):
-    def __init__(self, xml_folder_name: str | Path) -> None:
-        self.xml_folder_name = Path(xml_folder_name)
-        
-        if not self.xml_folder_name.is_dir():
-            logger.warning(f"Directory {xml_folder_name} does not exist, creating it")
-            self.xml_folder_name.mkdir()
-    
-    def save_attributes(self, attrs: dict) -> None:
-        name = attrs.pop("name")
-        df = pd.DataFrame(attrs, index=pd.Index([name], name="name"))
-        fn = self.xml_folder_name.joinpath("network.xml")
-        with fn.open("w"):
-            df.to_xml(fn, index=False)
-            
-    def save_meta(self, meta: dict) -> None:
-        fn = self.xml_folder_name.joinpath("meta.json")
-        fn.open("w").write(json.dumps(meta))
-
-    def save_crs(self, crs: dict) -> None:
-        fn = self.xml_folder_name.joinpath("crs.json")
-        fn.open("w").write(json.dumps(crs))
-
-    def save_snapshots(self, snapshots: pd.Index) -> None:
-        fn = self.xml_folder_name.joinpath("snapshots.xml")
-        with fn.open("w"):
-            snapshots.to_xml(fn, index=False)
-
-    def save_investment_periods(self, investment_periods: pd.Index) -> None:
-        fn = self.xml_folder_name.joinpath("investment_periods.xml")
-        with fn.open("w"):
-            investment_periods.to_xml(fn, index=False)
-
-    def save_static(self, list_name: str, df: pd.DataFrame) -> None:
-        fn = self.xml_folder_name.joinpath(list_name + ".xml")
-        with fn.open("w"):
-            df.to_xml(fn, index=False)
-
-    def save_series(self, list_name: str, attr: str, df: pd.DataFrame) -> None:
-        fn = self.xml_folder_name.joinpath(list_name + "-" + attr + ".xml")
-        sanitized_df = sanitize_columns(df)    
-        with fn.open("w"):
-            sanitized_df.to_xml(fn, index=False)
-
-    def remove_static(self, list_name: str) -> None:
-        if fns := list(self.xml_folder_name.joinpath(list_name).glob("*.xml")):
-            for fn in fns:
-                fn.unlink()
-            logger.warning(f'Stale xml file(s) {", ".join(fns)} removed')
-
-    def remove_series(self, list_name: str, attr: str) -> None:
-        fn = self.xml_folder_name.joinpath(list_name + "-" + attr + ".xml")
-        if fn.exists():
-            fn.unlink()
-
+                
 class ExporterCSV(Exporter):
     def __init__(self, csv_folder_name: Path | str, encoding: str | None) -> None:
         self.csv_folder_name = Path(csv_folder_name)
@@ -297,7 +241,7 @@ class ExporterCSV(Exporter):
         if fns := list(self.csv_folder_name.joinpath(list_name).glob("*.csv")):
             for fn in fns:
                 fn.unlink()
-            logger.warning(f'Stale csv file(s) {", ".join(fns)} removed')
+            logger.warning(f"Stale csv file(s) {', '.join(fns)} removed")
 
     def remove_series(self, list_name: str, attr: str) -> None:
         fn = self.csv_folder_name.joinpath(list_name + "-" + attr + ".csv")
@@ -712,20 +656,6 @@ def import_from_csv_folder(
     basename = Path(csv_folder_name).name
     with ImporterCSV(csv_folder_name, encoding=encoding) as importer:
         _import_from_importer(n, importer, basename=basename, skip_time=skip_time)
-
-def export_to_xml_folder(
-    n: Network,
-    xml_folder_name: str | Path,
-    export_standard_types: bool = False,
-    ) -> None:
-    basename = os.path.basename(xml_folder_name)
-    with ExporterXML(xml_folder_name=xml_folder_name) as exporter:
-        _export_to_exporter(
-            n,  
-            exporter,
-            basename=basename,
-            export_standard_types=export_standard_types,
-        )    
 
 @deprecated_common_kwargs
 def export_to_csv_folder(
