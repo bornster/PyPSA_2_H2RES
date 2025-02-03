@@ -1909,7 +1909,7 @@ def generate_row_data(index: str, generator_row_data: pd.Series, carrier_df: pd.
         'cap_inv_cost': generator_row_data['capital_cost'],
         'ramping_cost': ramping_cost,
         'co2_intensity': co2_intensity,
-        #'technology': validate_technology(fuel_type, generator_row_data['technology']),
+        'technology': validate_technology(fuel_type, generator_row_data['technology']),
         'ramp_up_rate': generator_row_data['ramp_limit_up'],
         'ramp_down_rate': generator_row_data['ramp_limit_down'],
         'primary_reserve': 'N',
