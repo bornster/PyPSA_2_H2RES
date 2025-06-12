@@ -1,0 +1,22 @@
+name,co2_emissions,color,nice_name
+DC,0.0,#8a1caf,DC
+AC,0.0,#70af1d,AC
+geothermal,0.12,#ba91b1,geothermal
+coal,0.3361,#545454,coal
+OCGT,0.198,#e0986c,Open-Cycle Gas
+oil,0.2571,#c9c9c9,oil
+biomass,0.0,#baa741,biomass
+lignite,0.4069,#826837,lignite
+nuclear,0.0,#ff8c00,nuclear
+CCGT,0.198,#a85522,Combined-Cycle Gas
+offwind-dc,0.0,#74c6f2,Offshore Wind (DC)
+offwind-ac,0.0,#6895dd,Offshore Wind (AC)
+onwind,0.0,#235ebc,Onshore Wind
+solar,0.0,#f9d002,Solar
+offwind-float,0.0,#b5e2fa,Offshore Wind (Floating)
+solar-hsat,0.0,#fdb915,solar-hsat
+battery,0.0,#ace37f,Battery Storage
+H2,0.0,#bf13a0,Hydrogen Storage
+H2 fuel cell,0.0,#c251ae,H2 fuel cell
+H2 electrolysis,0.0,#ff29d9,H2 electrolysis
+,0.0,,

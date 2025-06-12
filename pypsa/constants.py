@@ -23,6 +23,7 @@ ENERGY_SOURCES : Dict[str, Dict[str, Any]]= {
         "max_growth": 100,
         "ramping_cost": 0.5,
         "co2_emissions": 0.0,
+        "aliases": [['Biomass', "GTUR"]]
     },
     "Coal": {
         "technology": ["STUR"],
@@ -31,6 +32,7 @@ ENERGY_SOURCES : Dict[str, Dict[str, Any]]= {
         "max_growth": 100,
         "ramping_cost": 1.8,
         "co2_emissions": 1.1,
+        "aliases": ['Lignite']
     },
     "Gas": {
         "technology": ["STUR", "COMC", "GTUR"],
@@ -39,6 +41,7 @@ ENERGY_SOURCES : Dict[str, Dict[str, Any]]= {
         "max_growth": 100,
         "ramping_cost": 0.5,
         "co2_emissions": 0.4,
+        "aliases": [['CCGT', 'COMC'], ['OCGT', 'GTUR']]
     },
     "Oil": {
         "technology": ["STUR"],
@@ -47,6 +50,7 @@ ENERGY_SOURCES : Dict[str, Dict[str, Any]]= {
         "max_growth": 100,
         "ramping_cost": 1.8,
         "co2_emissions": 0.5,
+        
     },
     "Nuclear": {
         "technology": ["STUR"],
@@ -63,6 +67,7 @@ ENERGY_SOURCES : Dict[str, Dict[str, Any]]= {
         "max_growth": 4000,
         "ramping_cost": 0.0,
         "co2_emissions": 0.0,
+        "aliases": ['Solar-hsat']
     },
     "Wind": {
         "technology": ["WTON"],
@@ -71,5 +76,6 @@ ENERGY_SOURCES : Dict[str, Dict[str, Any]]= {
         "max_growth": 2000,
         "ramping_cost": 0.0,
         "co2_emissions": 0.0,
+        "aliases": ['Offwind-dc', 'Offwind-ac', 'Offwind-float', 'Onwind']
     }
 }

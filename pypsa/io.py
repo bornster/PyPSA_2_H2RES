@@ -1762,12 +1762,43 @@ def import_from_pandapower_net(
         component.static.replace({"bus0": to_replace}, inplace=True)
         component.static.replace({"bus1": to_replace}, inplace=True)
 
-def validate_fuel_type(fuel_type: str) -> str:
+def validate_fuel_type(fuel_type, index):
+    fuel_type_lower = fuel_type.lower()
+    
+    # First, try exact matching
     for key in ENERGY_SOURCES:
-        if (key.lower() in fuel_type.lower()):
-            return key
-    msg: str = f'Carrier of type {fuel_type} is not supported in H2RES model'
-    raise ValueError(msg)
+        if key.lower() == fuel_type_lower:
+            if len(ENERGY_SOURCES[key]['technology']) == 1:
+                return [key, ENERGY_SOURCES[key]['technology'][0]]
+            else:
+                return key
+    
+    for key in ENERGY_SOURCES:
+        if 'aliases' in ENERGY_SOURCES[key]:
+            for alias in ENERGY_SOURCES[key]['aliases']:
+                if isinstance(alias, list):
+                    alias_name = alias[0].lower()
+                else:
+                    alias_name = alias.lower()
+                
+                if alias_name == fuel_type_lower:
+                    if isinstance(alias, list) and len(alias) > 1:
+                        return [key, alias[1]]
+                    elif len(ENERGY_SOURCES[key]['technology']) == 1:
+                        return [key, ENERGY_SOURCES[key]['technology'][0]]
+                    else:
+                        return key
+    
+    # Finally, try partial matching as fallback
+    for key in ENERGY_SOURCES:
+        if key.lower() in fuel_type_lower:
+            if len(ENERGY_SOURCES[key]['technology']) == 1:
+                return [key, ENERGY_SOURCES[key]['technology'][0]]
+            else:
+                return key
+    print(f'Generator {index} has a carrier of type {fuel_type} which is not compatible in H2RES model')
+    return None  
+    
     
 def is_valid_life_time(life_time: float) -> bool: 
     return not (math.isinf(life_time) or math.isnan(life_time) or life_time <= 0)
@@ -1809,11 +1840,12 @@ def is_default_co2_emissions(carriers_df: pd.DataFrame,fuel_type: str) -> bool:
     
     return False
 
-def validate_technology(carrier: str, technology: str) -> str:
+def validate_technology(carrier: str, technology: str, index: int) -> str:
     if (technology.upper() in ENERGY_SOURCES[carrier]['technology']):
         return technology.upper()    
-    msg: str = f'Technology of type {technology} is not supported as a subtype of {carrier} in H2RES model. Allowed subtypes are {ENERGY_SOURCES[carrier.capitalize()]['technology']}'
-    raise ValueError(msg)
+    msg: str = f'On Generator {index} technology of type {technology} is not supported as a subtype of {carrier} in H2RES model. Allowed subtypes are {ENERGY_SOURCES[carrier.capitalize()]['technology']}'
+    print(msg)
+    return None
 
 def get_storage_capacity(storage_data_row: pd.Series) -> float:
         capacity = storage_data_row.get('sto_capacity', pd.Series())
@@ -1871,8 +1903,21 @@ def generate_row(elements: dict) -> ET.Element:
     return row
 
 def generate_row_data(index: str, generator_row_data: pd.Series, carrier_df: pd.DataFrame, storage_unit_row_data: pd.Series) -> dict[str, str]:
-    fuel_type: str = validate_fuel_type(generator_row_data['carrier'])
-    life_time: float = generator_row_data['lifetime'] if is_valid_life_time(generator_row_data['lifetime']) else ENERGY_SOURCES[fuel_type]['life_time']
+    technology = ''
+    fuel_type = ''
+    carrier_name: str = validate_fuel_type(generator_row_data['carrier'], index)
+    if (carrier_name == None): 
+        print(f'Cannot process generator {index} because of the lacking fuel type')
+        return None
+
+    if isinstance(carrier_name, list):  
+        fuel_type = carrier_name[0]
+        technology = carrier_name[1]  
+    else:
+        fuel_type = carrier_name
+        technology = validate_technology(fuel_type, generator_row_data['technology'], index)
+
+    life_time = generator_row_data['lifetime'] if is_valid_life_time(generator_row_data['lifetime']) else ENERGY_SOURCES[fuel_type]['life_time']
     max_inv_period: float = ENERGY_SOURCES[fuel_type]['max_growth'] if is_default_max_growth(carrier_df, generator_row_data['carrier']) else carrier_df.loc[carrier_df.index == generator_row_data['carrier'], 'max_growth'].iloc[0]
     ramping_cost: float = ENERGY_SOURCES[fuel_type]['ramping_cost'] if generator_row_data['ramping_cost'] <= 0 else generator_row_data['ramping_cost'] 
     co2_intensity: float = ENERGY_SOURCES[fuel_type]['co2_emissions'] if is_default_co2_emissions(carrier_df, generator_row_data['carrier']) else carrier_df.loc[carrier_df.index == generator_row_data['carrier'], 'co2_emissions'].iloc[0]
@@ -1909,7 +1954,7 @@ def generate_row_data(index: str, generator_row_data: pd.Series, carrier_df: pd.
         'cap_inv_cost': generator_row_data['capital_cost'],
         'ramping_cost': ramping_cost,
         'co2_intensity': co2_intensity,
-        'technology': validate_technology(fuel_type, generator_row_data['technology']),
+        'technology': technology,
         'ramp_up_rate': generator_row_data['ramp_limit_up'],
         'ramp_down_rate': generator_row_data['ramp_limit_down'],
         'primary_reserve': 'N',
@@ -1928,23 +1973,29 @@ def generate_row_data(index: str, generator_row_data: pd.Series, carrier_df: pd.
 def export_to_h2res(
     n: Network,
     xml_folder_name: str | Path = "data",
-    ) -> None:
+) -> None:
     path = Path(xml_folder_name)
     if not Path(xml_folder_name).is_dir():
-            logger.warning(f"Directory {xml_folder_name} does not exist, creating it")
-            Path(xml_folder_name).mkdir()
+        logger.warning(f"Directory {xml_folder_name} does not exist, creating it")
+        Path(xml_folder_name).mkdir()
     
     fn = path.joinpath('genco_data_HR_sdewes.xml')
     root = ET.Element('data')
-
+    
+    # Fill NaN values with 0 for ramping limits
     n.generators['ramp_limit_down'] = n.generators['ramp_limit_down'].fillna(0)
     n.generators['ramp_limit_up'] = n.generators['ramp_limit_up'].fillna(0)
     
+    # Single loop with proper None checking
     for index, row_data in n.generators.iterrows():
         storage_unit_row_data = n.storage_units.loc[n.storage_units['bus'] == row_data['bus']]
-        row_elements = generate_row_data(index, row_data, n.carriers,storage_unit_row_data)
-        row = generate_row(row_elements)   
-        root.append(row)
+        row_elements = generate_row_data(index, row_data, n.carriers, storage_unit_row_data)
+        
+        # Only create and append row if row_elements is not None
+        if row_elements is not None:
+            row = generate_row(row_elements)
+            root.append(row)
+    
     tree = ET.ElementTree(root)
     ET.indent(tree, space="\t", level=0)
     tree.write(fn, encoding="utf-8")
